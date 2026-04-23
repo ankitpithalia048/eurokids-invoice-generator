@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eurokids VIP Colony – Invoice Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --sky: #0369a1;
+    --sky-dark: #075985;
+    --sky-light: #e0f2fe;
+    --sky-pale: #f8fafc;
+    --orange: #ea580c;
+    --orange-dark: #c2410c;
+    --orange-light: #fff7ed;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--sky-pale);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08);
+  }
+  h1 { font-size: 20px; color: var(--sky-dark); margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+  h2 {
+    font-size: 15px; color: var(--sky-dark); margin: 18px 0 10px;
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  h2:first-of-type { margin-top: 0; }
+  label {
+    display: block; font-size: 12px; font-weight: 600; color: #4b5563;
+    margin-bottom: 4px; margin-top: 10px;
+  }
+  label .req { color: var(--orange-dark); margin-left: 3px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: 14px; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--sky);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+  }
+  input.invalid, select.invalid {
+    border-color: var(--danger);
+    background: #fef2f2;
+  }
+  input.invalid:focus { box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2); }
+  input:disabled, input[readonly] { background: #f3f4f6; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fee-row {
+    display: grid; grid-template-columns: 2fr 1fr 40px;
+    gap: 8px; margin-bottom: 6px; align-items: center;
+  }
+  .fee-row input[type="text"] { font-size: 13px; }
+  .fee-row input[type="number"] { text-align: right; }
+  .payment-row {
+    display: grid; grid-template-columns: 1.2fr 1fr 1.2fr 1.3fr 40px;
+    gap: 6px; margin-bottom: 6px; align-items: center;
+  }
+  .payment-row input, .payment-row select { font-size: 12px; padding: 6px 8px; }
+  .payment-row input[type="number"] { text-align: right; }
+  .btn {
+    padding: 9px 14px; border: none; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--sky); color: white; }
+  .btn-primary:hover { background: var(--sky-dark); }
+  .btn-accent { background: var(--orange); color: white; }
+  .btn-accent:hover { background: var(--orange-dark); }
+  .btn-secondary { background: #6b7280; color: white; }
+  .btn-secondary:hover { background: #4b5563; }
+  .btn-danger { background: var(--danger); color: white; padding: 4px 8px; font-size: 12px; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid #d1d5db; }
+  .btn-ghost:hover { background: #f3f4f6; }
+  .btn-sm { padding: 5px 8px; font-size: 11px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .total-bar {
+    background: var(--sky-light);
+    border: 1px solid #bae6fd;
+    border-radius: 8px; padding: 12px; margin-top: 12px;
+  }
+  .total-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; font-size: 13px; color: #374151;
+  }
+  .total-line.main {
+    font-size: 16px; font-weight: 700; color: var(--sky-dark);
+    padding-top: 8px; border-top: 1px solid #bae6fd; margin-top: 6px;
+  }
+  .total-line.balance { font-size: 16px; font-weight: 700; padding-top: 6px; }
+  .total-line.balance.due { color: var(--orange-dark); }
+  .total-line.balance.paid { color: #059669; }
+
+  .section-toggle {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; background: #f9fafb;
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-top: 10px; cursor: pointer; user-select: none;
+  }
+  .section-toggle input[type="checkbox"] { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+  .section-toggle label {
+    margin: 0; font-size: 13px; color: #374151;
+    font-weight: 600; cursor: pointer; flex: 1;
+  }
+  .section-toggle.active { background: var(--sky-light); border-color: #bae6fd; }
+  .section-body {
+    padding: 12px; border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 8px 8px; margin-top: -1px; background: #fafbfc;
+  }
+
+  /* ======= INVOICE PREVIEW ======= */
+  .invoice-preview {
+    background: white;
+    width: 100%;
+    aspect-ratio: 210 / 297;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 30mm 15mm 25mm 15mm;
+    font-size: 9.5px;
+    color: #1f2937;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+  .inv-title-bar {
+    text-align: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--sky);
+  }
+  .inv-title-bar .inv-title {
+    font-size: 22px; font-weight: 700;
+    color: var(--sky-dark); letter-spacing: 6px;
+  }
+  .inv-sub-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    font-size: 9px;
+    gap: 10px;
+  }
+  .inv-sub-block .left { text-align: left; }
+  .inv-sub-block .right { text-align: right; }
+  .inv-sub-block .inv-no { color: var(--sky-dark); font-weight: 700; font-size: 10px; }
+  .inv-sub-block .inv-date { color: var(--orange-dark); font-weight: 600; font-size: 10px; }
+  .inv-sub-block .inv-gst { color: #4b5563; margin-top: 3px; line-height: 1.4; }
+  .inv-sub-block .inv-gst strong { color: var(--sky-dark); font-weight: 600; }
+
+  .inv-meta {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 10px; font-size: 9.5px;
+  }
+  .inv-meta .box {
+    border: 1px solid var(--border);
+    padding: 6px 8px; border-radius: 4px;
+  }
+  .inv-meta .box .lbl {
+    font-size: 8px; color: var(--muted);
+    text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .inv-meta .box .val { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .inv-meta .box .sub { font-size: 9px; color: #4b5563; margin-top: 1px; }
+
+  .inv-table {
+    width: 100%; border-collapse: collapse;
+    margin-bottom: 8px; font-size: 9.5px;
+  }
+  .inv-table th {
+    background: var(--sky); color: white;
+    padding: 5px 8px; text-align: left;
+    font-size: 9.5px; font-weight: 600;
+  }
+  .inv-table th.right, .inv-table td.right { text-align: right; }
+  .inv-table td {
+    padding: 4px 8px; border-bottom: 1px solid var(--border);
+  }
+  .inv-table tr.discount td { color: var(--orange-dark); }
+  .inv-table tr.subtotal td { font-weight: 600; background: #f9fafb; }
+  .inv-table tr.total td {
+    background: var(--sky-light); font-weight: 700;
+    font-size: 11.5px; color: var(--sky-dark);
+    border-top: 2px solid var(--sky); border-bottom: none;
+  }
+  /* Payment history uses orange accent */
+  .inv-table.payments th { background: var(--orange); }
+  .inv-table.payments tr.total td {
+    background: var(--orange-light); color: var(--orange-dark);
+    border-top: 2px solid var(--orange);
+  }
+
+  .inv-section-title {
+    font-size: 9.5px; font-weight: 700;
+    color: var(--sky-dark); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-top: 8px; margin-bottom: 4px;
+    padding-bottom: 2px; border-bottom: 1px solid #bae6fd;
+  }
+  .inv-section-title.accent {
+    color: var(--orange-dark);
+    border-bottom-color: #fed7aa;
+  }
+  .inv-notes {
+    font-size: 10.5px; color: #4b5563; line-height: 1.65;
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px dashed #d1d5db;
+  }
+  .inv-notes .hd { font-weight: 700; color: #374151; font-size: 11.5px; margin-bottom: 4px; }
+  .inv-sign {
+    display: flex; justify-content: space-between;
+    margin-top: 50px; font-size: 10.5px; color: #4b5563;
+  }
+  .inv-sign .sign-box { text-align: center; width: 40%; }
+  .inv-sign .sign-line {
+    border-top: 1px solid #374151;
+    padding-top: 5px; margin-top: 40px;
+  }
+
+  .history-list {
+    max-height: 220px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .history-item {
+    padding: 8px 10px; border-bottom: 1px solid #f3f4f6;
+    display: flex; justify-content: space-between;
+    align-items: center; font-size: 12px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .h-info { flex: 1; min-width: 0; }
+  .history-item .h-no { font-weight: 600; color: var(--sky-dark); font-size: 12px; }
+  .history-item .h-name { color: #374151; font-size: 11px; }
+  .history-item .h-amt { color: var(--orange-dark); font-weight: 600; margin-right: 8px; font-size: 12px; }
+  .history-empty { padding: 16px; text-align: center; color: #9ca3af; font-size: 12px; }
+  .history-actions { display: flex; gap: 4px; }
+
+  /* ====== Student Search ====== */
+  .search-panel {
+    background: #fff;
+    border: 2px solid var(--sky);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .search-panel .search-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--sky-dark); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .search-input-row {
+    display: flex; gap: 8px;
+  }
+  .search-input-row input {
+    flex: 1;
+  }
+  .search-results {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+    display: none;
+  }
+  .search-results.show { display: block; }
+  .search-result-student {
+    padding: 10px 12px;
+    background: var(--sky-light);
+    border-bottom: 1px solid #bae6fd;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+  }
+  .search-result-student .s-info { flex: 1; }
+  .search-result-student .s-name {
+    font-weight: 700; color: var(--sky-dark); font-size: 13px;
+  }
+  .search-result-student .s-meta {
+    font-size: 11px; color: #4b5563; margin-top: 2px;
+  }
+  .search-result-invoice {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 80px auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .search-result-invoice:last-child { border-bottom: none; }
+  .search-result-invoice .r-no {
+    font-weight: 600; color: var(--sky-dark);
+  }
+  .search-result-invoice .r-date { color: #6b7280; font-size: 11px; }
+  .search-result-invoice .r-bal {
+    font-weight: 600; text-align: right; font-size: 12px;
+  }
+  .search-result-invoice .r-bal.due { color: var(--orange-dark); }
+  .search-result-invoice .r-bal.paid { color: #059669; }
+  .search-empty {
+    padding: 14px; text-align: center;
+    color: #9ca3af; font-size: 12px;
+  }
+
+  /* ====== Payment History Modal ====== */
+  .payment-history-section {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .payment-history-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .payment-history-section .phs-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px;
+    padding: 8px 10px; background: var(--sky-light);
+    border-radius: 6px;
+  }
+  .payment-history-section .phs-inv {
+    font-weight: 700; color: var(--sky-dark); font-size: 13px;
+  }
+  .payment-history-section .phs-summary {
+    font-size: 11px; color: #4b5563;
+  }
+  .payment-history-section .phs-balance {
+    font-weight: 700; font-size: 13px;
+  }
+  .payment-history-section .phs-balance.due { color: var(--orange-dark); }
+  .payment-history-section .phs-balance.paid { color: #059669; }
+  .payment-table {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+  }
+  .payment-table th {
+    background: #f9fafb; padding: 6px 8px; text-align: left;
+    font-weight: 600; color: #374151; font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  .payment-table td {
+    padding: 5px 8px; border-bottom: 1px solid #f3f4f6;
+  }
+  .payment-table td.amt { text-align: right; color: #059669; font-weight: 600; }
+  .payment-table .no-payments {
+    padding: 10px; text-align: center; color: #9ca3af; font-size: 12px;
+  }
+  .phs-totals {
+    display: flex; justify-content: space-between;
+    padding: 8px 10px; background: var(--orange-light);
+    border-radius: 6px; margin-top: 16px;
+    font-weight: 700;
+  }
+  .phs-totals .phs-total-label { color: var(--orange-dark); }
+  .phs-totals .phs-total-amt { color: var(--orange-dark); font-size: 14px; }
+
+  .modal.wide { max-width: 720px; }
+
+  @media print {
+    body * { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area {
+      position: absolute; left: 0; top: 0;
+      width: 210mm; padding: 30mm 15mm 25mm 15mm; background: white;
+    }
+  }
+  .print-area { display: none; }
+  @media print {
+    .print-area { display: block; }
+    @page { size: A4; margin: 0; }
+  }
+
+  .note-small { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .inline-check {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 12px; font-size: 12px; color: #374151;
+    cursor: pointer; user-select: none;
+  }
+  .inline-check input[type="checkbox"] { width: auto; margin: 0; }
+  .badge {
+    display: inline-block; background: var(--orange-light); color: var(--orange-dark);
+    padding: 1px 6px; border-radius: 3px; font-size: 10px;
+    font-weight: 600; margin-left: 6px;
+  }
+  .validation-banner {
+    background: #fef2f2; color: var(--danger);
+    border: 1px solid #fecaca; border-radius: 6px;
+    padding: 8px 10px; margin-top: 10px;
+    font-size: 12px; display: none;
+  }
+  .validation-banner.show { display: block; }
+  .validation-banner ul { margin: 4px 0 0 18px; }
+
+  /* ====== Sync status & settings ====== */
+  .sync-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 6px;
+    margin-bottom: 12px; font-size: 12px;
+    border: 1px solid var(--border);
+    background: #f9fafb;
+  }
+  .sync-bar .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #9ca3af;
+    flex-shrink: 0;
+  }
+  .sync-bar.connected { background: #ecfdf5; border-color: #a7f3d0; }
+  .sync-bar.connected .status-dot { background: #059669; }
+  .sync-bar.syncing { background: var(--sky-light); border-color: #bae6fd; }
+  .sync-bar.syncing .status-dot { background: var(--sky); animation: pulse 1s infinite; }
+  .sync-bar.error { background: #fef2f2; border-color: #fecaca; }
+  .sync-bar.error .status-dot { background: var(--danger); }
+  .sync-bar.offline { background: var(--orange-light); border-color: #fed7aa; }
+  .sync-bar.offline .status-dot { background: var(--orange); }
+  .sync-bar .sync-text { flex: 1; color: #374151; }
+  .sync-bar .sync-actions { display: flex; gap: 6px; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: 12px;
+    max-width: 560px; width: 100%;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 {
+    font-size: 18px; color: var(--sky-dark);
+    margin-bottom: 12px;
+  }
+  .modal p { font-size: 13px; color: #4b5563; margin-bottom: 10px; line-height: 1.5; }
+  .modal .close-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .modal code {
+    display: block; background: #f3f4f6;
+    padding: 8px 10px; border-radius: 4px;
+    font-size: 12px; word-break: break-all;
+    margin: 6px 0;
+  }
+  .modal ol { margin-left: 20px; font-size: 13px; line-height: 1.7; }
+  .modal ol li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="panel">
+    <h1>🎒 Eurokids VIP Colony</h1>
+    <div class="subtitle">Invoice Generator</div>
+
+    <div id="syncBar" class="sync-bar">
+      <span class="status-dot"></span>
+      <span class="sync-text" id="syncText">Not connected to Google Sheet</span>
+      <div class="sync-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
+        <button class="btn btn-ghost btn-sm" onclick="syncFromCloud()" id="syncBtn">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="search-panel">
+      <div class="search-title">🔍 Search Existing Student</div>
+      <div class="search-input-row">
+        <input type="text" id="searchInput" placeholder="Search by student name, parent name, or invoice number..." oninput="doSearch()">
+        <button class="btn btn-ghost btn-sm" onclick="clearSearch()">Clear</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <h2>Invoice Details</h2>
+    <div class="row">
+      <div>
+        <label>Invoice Date <span class="req">*</span></label>
+        <input type="date" id="invDate" onchange="calcTotal()" required>
+      </div>
+      <div>
+        <label>Academic Year <span class="req">*</span></label>
+        <input type="text" id="academicYear" value="2026-2027" onchange="handleAcademicYearChange()" required>
+      </div>
+    </div>
+
+    <label class="inline-check">
+      <input type="checkbox" id="customInvNo" onchange="toggleCustomInvNo()">
+      Use custom invoice number (auto-generated if unchecked)
+    </label>
+    <input type="text" id="invNumber" readonly style="margin-top:6px">
+
+    <label class="inline-check">
+      <input type="checkbox" id="gstEnabled" onchange="toggleGst()">
+      Include GST / Tax number
+    </label>
+    <div id="gstSection" style="display:none; margin-top:6px">
+      <div class="row">
+        <input type="text" id="gstNumber" placeholder="GSTIN (e.g. 22AAAAA0000A1Z5)" oninput="calcTotal()">
+        <input type="text" id="gstName" placeholder="Registered name (optional)" oninput="calcTotal()">
+      </div>
+    </div>
+
+    <h2>Student Details</h2>
+    <label>Student Name <span class="req">*</span></label>
+    <input type="text" id="studentName" placeholder="Full name" oninput="calcTotal()" required>
+    <div class="row">
+      <div>
+        <label>Parent / Guardian Name <span class="req">*</span></label>
+        <input type="text" id="parentName" placeholder="Parent name" oninput="calcTotal()" required>
+      </div>
+      <div>
+        <label>Contact Number <span class="req">*</span></label>
+        <input type="text" id="contact" placeholder="10-digit phone" oninput="calcTotal()" required>
+      </div>
+    </div>
+    <label>Program <span class="req">*</span></label>
+    <select id="program" onchange="loadProgram()" required>
+      <option value="playgroup">Play Group</option>
+      <option value="nursery">Nursery</option>
+      <option value="eurojunior">Euro Junior</option>
+      <option value="eurosenior">Euro Senior</option>
+      <option value="daycare">Day Care</option>
+      <option value="activityclass">Activity Classes</option>
+    </select>
+
+    <h2>Fee Components</h2>
+    <div class="note-small">Pre-filled per program. Edit any amount or label as needed.</div>
+    <div id="feeRows" style="margin-top:10px"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addFeeRow()" style="margin-top:6px">+ Add custom line item</button>
+
+    <h2>Optional Add-ons</h2>
+
+    <div class="section-toggle" id="transportToggle">
+      <input type="checkbox" id="transportEnabled" onchange="toggleTransport()">
+      <label for="transportEnabled">🚌 Transportation</label>
+    </div>
+    <div id="transportBody" class="section-body" style="display:none">
+      <div class="row">
+        <div>
+          <label>Zone / Area preset (optional)</label>
+          <select id="transportZone" onchange="applyTransportPreset()">
+            <option value="">-- Custom / select preset --</option>
+            <optgroup label="Zone A - Kachna">
+              <option value="Downtown District|50">Downtown District – ₹50/mo</option>
+              <option value="Central Park Area|55">Central Park Area – ₹55/mo</option>
+              <option value="Riverside Neighborhood|60">Riverside Neighborhood – ₹60/mo</option>
+              <option value="Main Street Zone|55">Main Street Zone – ₹55/mo</option>
+            </optgroup>
+            <optgroup label="Zone B - Saddu">
+              <option value="Oakwood Suburb|75">Oakwood Suburb – ₹75/mo</option>
+              <option value="Maple Heights|80">Maple Heights – ₹80/mo</option>
+              <option value="Sunny Hills|85">Sunny Hills – ₹85/mo</option>
+            </optgroup>
+            <optgroup label="Zone C - Avanti Vihar">
+              <option value="Greenfield Township|100">Greenfield Township – ₹100/mo</option>
+              <option value="Lakeside Community|110">Lakeside Community – ₹110/mo</option>
+              <option value="Valley View District|120">Valley View District – ₹120/mo</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label>Area Description <span class="req">*</span></label>
+          <input type="text" id="transportDesc" placeholder="e.g. Central Park Area" oninput="calcTotal()">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Transportation Charge (₹) <span class="req">*</span></label>
+          <input type="number" id="transportAmount" value="0" oninput="calcTotal()" placeholder="Total amount">
+        </div>
+        <div>
+          <label>Period Note (optional)</label>
+          <input type="text" id="transportPeriod" placeholder="e.g. 12 months" oninput="calcTotal()">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-toggle" id="daycareToggle">
+      <input type="checkbox" id="daycareEnabled" onchange="toggleDaycare()">
+      <label for="daycareEnabled">🧸 Day Care (After school 1:30 pm – 6:00 pm)</label>
+    </div>
+    <div id="daycareBody" class="section-body" style="display:none">
+      <div class="row">
+        <div>
+          <label>Day Care Charge (₹) <span class="req">*</span></label>
+          <input type="number" id="daycareAmount" value="5000" oninput="calcTotal()">
+        </div>
+        <div>
+          <label>Period Note (optional)</label>
+          <input type="text" id="daycarePeriod" placeholder="e.g. Monthly / Annual" oninput="calcTotal()">
+        </div>
+      </div>
+    </div>
+
+    <h2>Discount & Adjustments</h2>
+    <div class="row">
+      <div>
+        <label>Discount (₹)</label>
+        <input type="number" id="discount" value="0" oninput="calcTotal()">
+      </div>
+      <div>
+        <label>Discount Reason (optional)</label>
+        <input type="text" id="discountReason" placeholder="e.g. Sibling / Early bird" oninput="calcTotal()">
+      </div>
+    </div>
+
+    <h2>Payments Received <span class="badge" id="paymentsBadge">0 entries</span></h2>
+    <div class="note-small">One row per payment instalment — registration, 2nd payment, follow-ups etc.</div>
+    <div id="paymentRows" style="margin-top:10px"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addPaymentRow()" style="margin-top:6px">+ Add payment</button>
+
+    <div class="total-bar">
+      <div class="total-line"><span>Fees Subtotal</span><span id="feeSubtotal">₹0</span></div>
+      <div class="total-line"><span>Add-ons</span><span id="addonsTotal">₹0</span></div>
+      <div class="total-line" id="discountLine" style="display:none"><span>Less: Discount</span><span id="discountTotal">₹0</span></div>
+      <div class="total-line main"><span>Total Payable</span><span id="totalDisplay">₹0</span></div>
+      <div class="total-line"><span>Total Paid</span><span id="paidDisplay">₹0</span></div>
+      <div class="total-line balance" id="balanceLine"><span>Balance Due</span><span id="balanceDisplay">₹0</span></div>
+    </div>
+
+    <div id="validationBanner" class="validation-banner">
+      <strong>Please fix these before continuing:</strong>
+      <ul id="validationList"></ul>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveInvoice()">💾 Save Invoice</button>
+      <button class="btn btn-accent" onclick="downloadPDF()">📄 Download PDF</button>
+      <button class="btn btn-secondary" onclick="printInvoice()">🖨 Print</button>
+      <button class="btn btn-ghost" onclick="resetForm()">↻ New Invoice</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h1>Live Preview</h1>
+    <div class="subtitle">A4 · 30mm top + 25mm bottom blank for letterhead</div>
+    <div id="invoicePreview" class="invoice-preview"></div>
+  </div>
+
+</div>
+
+<div id="printArea" class="print-area"></div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay">
+  <div class="modal">
+    <h3>⚙ Google Sheet Sync Settings</h3>
+    <p>Paste your Google Apps Script Web App URL below. The app will save invoices to your sheet and load them back on every device.</p>
+
+    <label>Apps Script Web App URL</label>
+    <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+
+    <p style="margin-top:12px; font-size:12px; color:#6b7280;">
+      <strong>How to get this URL:</strong>
+    </p>
+    <ol>
+      <li>Open your Google Sheet → <em>Extensions → Apps Script</em></li>
+      <li>Paste the <code>Code.gs</code> file contents</li>
+      <li>Click <em>Deploy → New deployment</em></li>
+      <li>Type: <em>Web app</em>, Execute as: <em>Me</em>, Access: <em>Anyone</em></li>
+      <li>Click <em>Deploy</em> and copy the web app URL here</li>
+    </ol>
+    <p style="font-size:12px; color:#6b7280;">Full steps are in the README file.</p>
+
+    <div class="close-row">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="clearScriptUrl()">Disconnect</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save & Test Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment History Modal -->
+<div id="paymentHistoryModal" class="modal-overlay">
+  <div class="modal wide">
+    <h3 id="phModalTitle">💳 Payment History</h3>
+    <div id="phModalBody"></div>
+    <div class="close-row">
+      <button class="btn btn-primary" onclick="closePaymentHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROGRAMS = {
+  playgroup: { name: "Play Group", components: [
+    { label: "Essential Kit", amount: 6950 },
+    { label: "Tuition Fees", amount: 29000 },
+    { label: "Term Fees", amount: 3000 },
+    { label: "Annual Field Trip & Events", amount: 6000 },
+    { label: "Enrollment Fees", amount: 10000 }
+  ]},
+  nursery: { name: "Nursery", components: [
+    { label: "Essential Kit", amount: 7800 },
+    { label: "Tuition Fees", amount: 30200 },
+    { label: "Term Fees", amount: 3000 },
+    { label: "Annual Field Trip & Events", amount: 6000 },
+    { label: "Enrollment Fees", amount: 10000 }
+  ]},
+  eurojunior: { name: "Euro Junior", components: [
+    { label: "Essential Kit", amount: 8800 },
+    { label: "Tuition Fees", amount: 31000 },
+    { label: "Term Fees", amount: 3000 },
+    { label: "Uniform", amount: 2150 },
+    { label: "Annual Trip & Events", amount: 6000 },
+    { label: "Enrollment Fees", amount: 10000 }
+  ]},
+  eurosenior: { name: "Euro Senior", components: [
+    { label: "Essential Kit", amount: 8900 },
+    { label: "Tuition Fees", amount: 32000 },
+    { label: "Term Fees", amount: 3000 },
+    { label: "Uniform", amount: 2150 },
+    { label: "Annual Trip & Events", amount: 6000 },
+    { label: "Enrollment Fees", amount: 10000 }
+  ]},
+  daycare: {name: "Day Care", components: [
+  ]},
+  activityclass: { name: "Activity Classes", components: [
+    { label: "Activity Classes", amount: 10000 }
+  ]},
+};
+
+let currentFees = [];
+let payments = [];
+let cloudInvoices = []; // in-memory mirror from sheet (or localStorage fallback)
+let scriptUrl = '';
+
+/* ============ SYNC / CLOUD ============ */
+
+const LS_KEYS = {
+  SCRIPT_URL: 'ek_script_url',
+  CACHE: 'ek_invoices_v4_cache'
+};
+
+function loadScriptUrl() {
+  scriptUrl = localStorage.getItem(LS_KEYS.SCRIPT_URL) || '';
+  return scriptUrl;
+}
+
+function saveScriptUrl(url) {
+  scriptUrl = url.trim();
+  if (scriptUrl) localStorage.setItem(LS_KEYS.SCRIPT_URL, scriptUrl);
+  else localStorage.removeItem(LS_KEYS.SCRIPT_URL);
+}
+
+function setSyncStatus(state, message) {
+  const bar = document.getElementById('syncBar');
+  const text = document.getElementById('syncText');
+  bar.classList.remove('connected', 'syncing', 'error', 'offline');
+  if (state) bar.classList.add(state);
+  text.textContent = message;
+}
+
+function openSettings() {
+  document.getElementById('scriptUrlInput').value = scriptUrl || '';
+  document.getElementById('settingsModal').classList.add('show');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+async function saveSettings() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url) { alert('Please paste your Apps Script URL.'); return; }
+  if (!/^https:\/\/script\.google\.com\//.test(url)) {
+    if (!confirm('That URL does not look like a Google Apps Script web app URL. Save anyway?')) return;
+  }
+  saveScriptUrl(url);
+  closeSettings();
+  await syncFromCloud();
+}
+
+function clearScriptUrl() {
+  if (!confirm('Disconnect from Google Sheet? Local cache will stay.')) return;
+  saveScriptUrl('');
+  setSyncStatus(null, 'Not connected to Google Sheet');
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+async function callScript(params, method) {
+  if (!scriptUrl) throw new Error('No Apps Script URL configured');
+  const isPost = method === 'POST';
+  const opts = {
+    method: isPost ? 'POST' : 'GET',
+    redirect: 'follow'
+  };
+  let url = scriptUrl;
+  if (isPost) {
+    // Use text/plain to avoid CORS preflight with Apps Script
+    opts.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+    opts.body = JSON.stringify(params);
+  } else {
+    const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+    url = scriptUrl + (scriptUrl.indexOf('?') >= 0 ? '&' : '?') + qs;
+  }
+  const res = await fetch(url, opts);
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch (e) {
+    throw new Error('Invalid response from server. First 200 chars: ' + text.slice(0, 200));
+  }
+  if (!json.ok) throw new Error(json.error || 'Unknown server error');
+  return json.data;
+}
+
+async function syncFromCloud() {
+  if (!scriptUrl) {
+    // Fall back to local cache
+    const cached = localStorage.getItem(LS_KEYS.CACHE);
+    cloudInvoices = cached ? JSON.parse(cached) : [];
+    setSyncStatus('offline', `Offline mode · ${cloudInvoices.length} cached`);
+    renderHistory();
+    refreshInvoiceNumber();
+    return;
+  }
+  const ay = document.getElementById('academicYear').value || '2026-2027';
+  setSyncStatus('syncing', 'Syncing from Google Sheet...');
+  try {
+    const data = await callScript({ action: 'list', ay: ay }, 'GET');
+    cloudInvoices = data.invoices || [];
+    localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudInvoices));
+    setSyncStatus('connected', `Connected · ${cloudInvoices.length} invoice${cloudInvoices.length === 1 ? '' : 's'} in sheet (${ay})`);
+    renderHistory();
+    await refreshInvoiceNumber();
+  } catch (err) {
+    // Use cache
+    const cached = localStorage.getItem(LS_KEYS.CACHE);
+    cloudInvoices = cached ? JSON.parse(cached) : [];
+    setSyncStatus('error', 'Sync failed: ' + err.message.slice(0, 80) + ' · using cache');
+    renderHistory();
+  }
+}
+
+async function refreshInvoiceNumber() {
+  if (document.getElementById('customInvNo').checked) return;
+  const ay = document.getElementById('academicYear').value || '2026-2027';
+  if (scriptUrl) {
+    try {
+      const data = await callScript({ action: 'nextNumber', ay: ay }, 'GET');
+      document.getElementById('invNumber').value = data.nextInvoiceNumber;
+      return;
+    } catch (err) {
+      // fall through to local
+    }
+  }
+  document.getElementById('invNumber').value = generateInvoiceNumberLocal();
+}
+
+/* ============ INIT ============ */
+
+async function init() {
+  document.getElementById('invDate').valueAsDate = new Date();
+  loadProgram();
+  renderPayments();
+  loadScriptUrl();
+  await syncFromCloud();
+}
+
+function generateInvoiceNumberLocal() {
+  const year = new Date().getFullYear();
+  const autoNumbers = cloudInvoices.filter(h => !h.customInvNo).map(h => {
+    const m = String(h.invNumber || '').match(/(\d+)$/);
+    return m ? parseInt(m[1]) : 0;
+  });
+  const nextNum = autoNumbers.length > 0 ? Math.max(...autoNumbers) + 1 : 1;
+  return `EK/VIP/${year}/${String(nextNum).padStart(4, '0')}`;
+}
+
+async function handleAcademicYearChange() {
+  const ay = document.getElementById('academicYear').value.trim();
+  if (!/^\d{4}-\d{4}$/.test(ay)) {
+    calcTotal();
+    return;
+  }
+  await syncFromCloud();
+  calcTotal();
+}
+
+function toggleCustomInvNo() {
+  const on = document.getElementById('customInvNo').checked;
+  const field = document.getElementById('invNumber');
+  if (on) {
+    field.removeAttribute('readonly');
+    field.oninput = calcTotal;
+    field.focus();
+    field.select();
+  } else {
+    field.setAttribute('readonly', true);
+    field.oninput = null;
+    refreshInvoiceNumber();
+    calcTotal();
+  }
+}
+
+function toggleGst() {
+  document.getElementById('gstSection').style.display = document.getElementById('gstEnabled').checked ? 'block' : 'none';
+  calcTotal();
+}
+
+function toggleTransport() {
+  const on = document.getElementById('transportEnabled').checked;
+  document.getElementById('transportBody').style.display = on ? 'block' : 'none';
+  document.getElementById('transportToggle').classList.toggle('active', on);
+  calcTotal();
+}
+
+function toggleDaycare() {
+  const on = document.getElementById('daycareEnabled').checked;
+  document.getElementById('daycareBody').style.display = on ? 'block' : 'none';
+  document.getElementById('daycareToggle').classList.toggle('active', on);
+  calcTotal();
+}
+
+function applyTransportPreset() {
+  const sel = document.getElementById('transportZone').value;
+  if (!sel) { calcTotal(); return; }
+  const [area, rate] = sel.split('|');
+  document.getElementById('transportDesc').value = area;
+  const currentAmt = parseFloat(document.getElementById('transportAmount').value) || 0;
+  if (currentAmt === 0) {
+    document.getElementById('transportAmount').value = parseInt(rate) * 12;
+    document.getElementById('transportPeriod').value = '12 months';
+  }
+  calcTotal();
+}
+
+function loadProgram() {
+  const key = document.getElementById('program').value;
+  currentFees = JSON.parse(JSON.stringify(PROGRAMS[key].components));
+  renderFees();
+  calcTotal();
+}
+
+function renderFees() {
+  const container = document.getElementById('feeRows');
+  container.innerHTML = '';
+  currentFees.forEach((f, idx) => {
+    const row = document.createElement('div');
+    row.className = 'fee-row';
+    row.innerHTML = `
+      <input type="text" value="${escapeAttr(f.label)}" onchange="updateFee(${idx}, 'label', this.value)">
+      <input type="number" value="${f.amount}" onchange="updateFee(${idx}, 'amount', this.value)" oninput="updateFee(${idx}, 'amount', this.value)">
+      <button class="btn btn-danger" onclick="removeFee(${idx})" title="Remove">×</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updateFee(idx, field, value) {
+  if (field === 'amount') currentFees[idx][field] = parseFloat(value) || 0;
+  else currentFees[idx][field] = value;
+  calcTotal();
+}
+
+function removeFee(idx) {
+  currentFees.splice(idx, 1);
+  renderFees();
+  calcTotal();
+}
+
+function addFeeRow() {
+  currentFees.push({ label: "Custom Item", amount: 0 });
+  renderFees();
+  calcTotal();
+}
+
+function addPaymentRow() {
+  payments.push({ date: new Date().toISOString().slice(0, 10), amount: 0, mode: 'Cash', ref: '' });
+  renderPayments();
+  calcTotal();
+}
+
+function renderPayments() {
+  const container = document.getElementById('paymentRows');
+  container.innerHTML = '';
+  document.getElementById('paymentsBadge').textContent = `${payments.length} ${payments.length === 1 ? 'entry' : 'entries'}`;
+  if (payments.length === 0) {
+    container.innerHTML = '<div class="note-small" style="padding:8px; text-align:center;">No payments added yet</div>';
+    return;
+  }
+  payments.forEach((p, idx) => {
+    const row = document.createElement('div');
+    row.className = 'payment-row';
+    row.innerHTML = `
+      <input type="date" value="${p.date}" onchange="updatePayment(${idx}, 'date', this.value)">
+      <input type="number" value="${p.amount}" placeholder="Amount" onchange="updatePayment(${idx}, 'amount', this.value)" oninput="updatePayment(${idx}, 'amount', this.value)">
+      <select onchange="updatePayment(${idx}, 'mode', this.value)">
+        ${['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card'].map(m =>
+          `<option value="${m}" ${p.mode === m ? 'selected' : ''}>${m}</option>`
+        ).join('')}
+      </select>
+      <input type="text" value="${escapeAttr(p.ref)}" placeholder="Txn / Ref ID" onchange="updatePayment(${idx}, 'ref', this.value)">
+      <button class="btn btn-danger" onclick="removePayment(${idx})" title="Remove">×</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updatePayment(idx, field, value) {
+  if (field === 'amount') payments[idx][field] = parseFloat(value) || 0;
+  else payments[idx][field] = value;
+  calcTotal();
+}
+
+function removePayment(idx) {
+  payments.splice(idx, 1);
+  renderPayments();
+  calcTotal();
+}
+
+function calcTotal() {
+  const feeSum = currentFees.reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+  const transportOn = document.getElementById('transportEnabled').checked;
+  const transportAmt = transportOn ? (parseFloat(document.getElementById('transportAmount').value) || 0) : 0;
+  const daycareOn = document.getElementById('daycareEnabled').checked;
+  const daycareAmt = daycareOn ? (parseFloat(document.getElementById('daycareAmount').value) || 0) : 0;
+  const addonsTotal = transportAmt + daycareAmt;
+  const discount = parseFloat(document.getElementById('discount').value) || 0;
+  const subtotal = feeSum + addonsTotal;
+  const total = subtotal - discount;
+  const paid = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const balance = total - paid;
+
+  document.getElementById('feeSubtotal').textContent = fmt(feeSum);
+  document.getElementById('addonsTotal').textContent = fmt(addonsTotal);
+  document.getElementById('totalDisplay').textContent = fmt(total);
+  document.getElementById('paidDisplay').textContent = fmt(paid);
+  document.getElementById('balanceDisplay').textContent = fmt(balance);
+
+  document.getElementById('discountLine').style.display = discount > 0 ? 'flex' : 'none';
+  document.getElementById('discountTotal').textContent = '− ' + fmt(discount);
+
+  const balLine = document.getElementById('balanceLine');
+  balLine.classList.remove('due', 'paid');
+  if (balance > 0) balLine.classList.add('due');
+  else if (balance <= 0 && paid > 0) balLine.classList.add('paid');
+
+  renderPreview({ feeSum, transportAmt, daycareAmt, discount, subtotal, total, paid, balance });
+}
+
+function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+
+/* ====== VALIDATION ====== */
+function validateForm() {
+  const errors = [];
+  const fields = [
+    { id: 'invDate', name: 'Invoice Date' },
+    { id: 'academicYear', name: 'Academic Year' },
+    { id: 'invNumber', name: 'Invoice Number' },
+    { id: 'studentName', name: 'Student Name' },
+    { id: 'parentName', name: 'Parent / Guardian Name' },
+    { id: 'contact', name: 'Contact Number' }
+  ];
+
+  // Clear all invalid states first
+  document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+
+  fields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el.value.trim()) {
+      el.classList.add('invalid');
+      errors.push(f.name + ' is required');
+    }
+  });
+
+  // Contact number basic pattern
+  const contactEl = document.getElementById('contact');
+  if (contactEl.value.trim() && !/^\d{7,15}$/.test(contactEl.value.replace(/\s+/g, ''))) {
+    contactEl.classList.add('invalid');
+    errors.push('Contact Number must be digits only (7–15 digits)');
+  }
+
+  // Transport conditional
+  if (document.getElementById('transportEnabled').checked) {
+    const td = document.getElementById('transportDesc');
+    const ta = document.getElementById('transportAmount');
+    if (!td.value.trim()) { td.classList.add('invalid'); errors.push('Transport: Area Description is required'); }
+    if (!ta.value || parseFloat(ta.value) <= 0) { ta.classList.add('invalid'); errors.push('Transport: Charge must be greater than 0'); }
+  }
+
+  // Daycare conditional
+  if (document.getElementById('daycareEnabled').checked) {
+    const da = document.getElementById('daycareAmount');
+    if (!da.value || parseFloat(da.value) <= 0) { da.classList.add('invalid'); errors.push('Day Care: Charge must be greater than 0'); }
+  }
+
+  // GST conditional - if checked, GST number required
+  if (document.getElementById('gstEnabled').checked) {
+    const gn = document.getElementById('gstNumber');
+    if (!gn.value.trim()) { gn.classList.add('invalid'); errors.push('GSTIN is required when GST is enabled'); }
+  }
+
+  // Fees - at least one item with amount > 0
+  const totalFees = currentFees.reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+  if (totalFees <= 0) errors.push('Fee components total must be greater than 0');
+
+  const banner = document.getElementById('validationBanner');
+  const list = document.getElementById('validationList');
+  if (errors.length) {
+    list.innerHTML = errors.map(e => `<li>${escapeHtml(e)}</li>`).join('');
+    banner.classList.add('show');
+    const firstInvalid = document.querySelector('.invalid');
+    if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  } else {
+    banner.classList.remove('show');
+    return true;
+  }
+}
+
+/* ====== PREVIEW ====== */
+function renderPreview(t) {
+  const invNumber = document.getElementById('invNumber').value || '—';
+  const invDate = document.getElementById('invDate').value;
+  const formattedDate = invDate
+    ? new Date(invDate).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
+    : '';
+  const student = document.getElementById('studentName').value || '—';
+  const parent = document.getElementById('parentName').value || '—';
+  const contact = document.getElementById('contact').value || '—';
+  const program = PROGRAMS[document.getElementById('program').value].name;
+  const academicYear = document.getElementById('academicYear').value;
+
+  const gstOn = document.getElementById('gstEnabled').checked;
+  const gstNo = document.getElementById('gstNumber').value;
+  const gstName = document.getElementById('gstName').value;
+
+  const transportOn = document.getElementById('transportEnabled').checked;
+  const transportDesc = document.getElementById('transportDesc').value || 'Transportation';
+  const transportPeriod = document.getElementById('transportPeriod').value;
+
+  const daycareOn = document.getElementById('daycareEnabled').checked;
+  const daycarePeriod = document.getElementById('daycarePeriod').value;
+
+  const discountReason = document.getElementById('discountReason').value;
+
+  let feeTableRows = '';
+  currentFees.forEach(f => {
+    feeTableRows += `<tr><td>${escapeHtml(f.label)}</td><td class="right">${fmt(f.amount)}</td></tr>`;
+  });
+  if (transportOn && t.transportAmt > 0) {
+    const lbl = `Transportation — ${escapeHtml(transportDesc)}${transportPeriod ? ' (' + escapeHtml(transportPeriod) + ')' : ''}`;
+    feeTableRows += `<tr><td>${lbl}</td><td class="right">${fmt(t.transportAmt)}</td></tr>`;
+  }
+  if (daycareOn && t.daycareAmt > 0) {
+    const lbl = `Day Care Facility${daycarePeriod ? ' (' + escapeHtml(daycarePeriod) + ')' : ''} — 1:30 pm to 6:00 pm`;
+    feeTableRows += `<tr><td>${lbl}</td><td class="right">${fmt(t.daycareAmt)}</td></tr>`;
+  }
+  feeTableRows += `<tr class="subtotal"><td>Subtotal</td><td class="right">${fmt(t.subtotal)}</td></tr>`;
+  if (t.discount > 0) {
+    const drLbl = discountReason ? ` (${escapeHtml(discountReason)})` : '';
+    feeTableRows += `<tr class="discount"><td>Less: Discount${drLbl}</td><td class="right">− ${fmt(t.discount)}</td></tr>`;
+  }
+  feeTableRows += `<tr class="total"><td>TOTAL PAYABLE</td><td class="right">${fmt(t.total)}</td></tr>`;
+
+  let paymentsBlock = '';
+  if (payments.length > 0) {
+    let pRows = '';
+    payments.forEach(p => {
+      const pdate = p.date ? new Date(p.date).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+      pRows += `<tr><td>${escapeHtml(pdate)}</td><td>${escapeHtml(p.mode)}</td><td>${escapeHtml(p.ref || '—')}</td><td class="right">${fmt(p.amount)}</td></tr>`;
+    });
+    pRows += `<tr class="subtotal"><td colspan="3">Total Paid</td><td class="right">${fmt(t.paid)}</td></tr>`;
+    const balLabel = t.balance > 0 ? 'BALANCE DUE' : (t.balance < 0 ? 'OVERPAID / REFUND DUE' : 'FULLY PAID');
+    pRows += `<tr class="total"><td colspan="3">${balLabel}</td><td class="right">${fmt(Math.abs(t.balance))}</td></tr>`;
+    paymentsBlock = `
+      <div class="inv-section-title accent">Payment History</div>
+      <table class="inv-table payments">
+        <thead><tr><th>Date</th><th>Mode</th><th>Reference</th><th class="right">Amount</th></tr></thead>
+        <tbody>${pRows}</tbody>
+      </table>
+    `;
+  }
+
+  const html = `
+    <div class="inv-title-bar">
+      <div class="inv-title">INVOICE</div>
+    </div>
+
+    <div class="inv-sub-block">
+      <div class="left">
+        <div class="inv-no">${escapeHtml(invNumber)}</div>
+        ${gstOn && (gstNo || gstName) ? `
+          <div class="inv-gst">
+            ${gstNo ? `<strong>GSTIN:</strong> ${escapeHtml(gstNo)}` : ''}
+            ${gstName ? `${gstNo ? '<br>' : ''}<strong>Registered Name:</strong> ${escapeHtml(gstName)}` : ''}
+          </div>
+        ` : ''}
+      </div>
+      <div class="right">
+        <div class="inv-date">Date: ${formattedDate}</div>
+      </div>
+    </div>
+
+    <div class="inv-meta">
+      <div class="box">
+        <div class="lbl">Bill To</div>
+        <div class="val">${escapeHtml(student)}</div>
+        <div class="sub">Parent: ${escapeHtml(parent)}</div>
+        <div class="sub">Contact: ${escapeHtml(contact)}</div>
+      </div>
+      <div class="box">
+        <div class="lbl">Program Details</div>
+        <div class="val">${escapeHtml(program)}</div>
+        <div class="sub">Academic Year: ${escapeHtml(academicYear)}</div>
+      </div>
+    </div>
+
+    <div class="inv-section-title">Fee Breakdown</div>
+    <table class="inv-table">
+      <thead><tr><th>Description</th><th class="right">Amount</th></tr></thead>
+      <tbody>${feeTableRows}</tbody>
+    </table>
+
+    ${paymentsBlock}
+
+    <div class="inv-notes">
+      <div class="hd">Notes</div>
+      • Late fee of ₹30/day is chargeable after September 24th.<br>
+      • Access Home Buddy App · User ID: Registered Phone number.<br>
+      • Transportation is available as per distance.<br>
+      • Fees once paid are non-refundable &amp; non-transferable.
+    </div>
+
+    <div class="inv-sign">
+      <div class="sign-box"><div class="sign-line">Parent Signature</div></div>
+      <div class="sign-box"><div class="sign-line">For Eurokids VIP Colony</div></div>
+    </div>
+  `;
+
+  document.getElementById('invoicePreview').innerHTML = html;
+}
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str) { return escapeHtml(str); }
+
+function getHistory() {
+  return cloudInvoices.slice();
+}
+
+async function saveInvoice() {
+  if (!validateForm()) return;
+  const invNumber = document.getElementById('invNumber').value.trim();
+  const snapshot = collectSnapshot();
+  const existing = cloudInvoices.findIndex(h => h.invNumber === invNumber);
+  if (existing >= 0) {
+    if (!confirm(`Invoice ${invNumber} already exists. Overwrite?`)) return;
+  }
+
+  if (scriptUrl) {
+    setSyncStatus('syncing', 'Saving to Google Sheet...');
+    try {
+      await callScript({ action: 'save', invoice: snapshot }, 'POST');
+      // Re-sync to get the canonical state back
+      await syncFromCloud();
+      alert('✓ Invoice saved to Google Sheet: ' + invNumber);
+    } catch (err) {
+      // Save locally as cache, show warning
+      if (existing >= 0) cloudInvoices[existing] = snapshot;
+      else cloudInvoices.unshift(snapshot);
+      localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudInvoices));
+      renderHistory();
+      setSyncStatus('error', 'Cloud save failed — saved to local cache');
+      alert('⚠ Cloud save failed (' + err.message.slice(0, 100) + ')\nSaved to local cache only. Invoice number: ' + invNumber);
+    }
+  } else {
+    // No cloud configured, just save locally
+    if (existing >= 0) cloudInvoices[existing] = snapshot;
+    else cloudInvoices.unshift(snapshot);
+    localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudInvoices));
+    renderHistory();
+    alert('✓ Invoice saved locally (offline): ' + invNumber + '\n\nTip: Configure Google Sheet sync in Settings to sync across devices.');
+  }
+}
+
+function collectSnapshot() {
+  return {
+    invNumber: document.getElementById('invNumber').value.trim(),
+    customInvNo: document.getElementById('customInvNo').checked,
+    date: document.getElementById('invDate').value,
+    student: document.getElementById('studentName').value,
+    parent: document.getElementById('parentName').value,
+    contact: document.getElementById('contact').value,
+    program: document.getElementById('program').value,
+    academicYear: document.getElementById('academicYear').value,
+    gstEnabled: document.getElementById('gstEnabled').checked,
+    gstNumber: document.getElementById('gstNumber').value,
+    gstName: document.getElementById('gstName').value,
+    fees: JSON.parse(JSON.stringify(currentFees)),
+    transport: {
+      enabled: document.getElementById('transportEnabled').checked,
+      zone: document.getElementById('transportZone').value,
+      desc: document.getElementById('transportDesc').value,
+      amount: document.getElementById('transportAmount').value,
+      period: document.getElementById('transportPeriod').value
+    },
+    daycare: {
+      enabled: document.getElementById('daycareEnabled').checked,
+      amount: document.getElementById('daycareAmount').value,
+      period: document.getElementById('daycarePeriod').value
+    },
+    discount: document.getElementById('discount').value,
+    discountReason: document.getElementById('discountReason').value,
+    payments: JSON.parse(JSON.stringify(payments)),
+    total: document.getElementById('totalDisplay').textContent,
+    paid: document.getElementById('paidDisplay').textContent,
+    balance: document.getElementById('balanceDisplay').textContent,
+    savedAt: new Date().toISOString()
+  };
+}
+
+function renderHistory() {
+  // History list UI removed — replaced by student search.
+  // This function is kept as a no-op so existing callers don't break.
+  // Re-render current search results if any, so saved edits show up.
+  if (document.getElementById('searchInput').value.trim()) {
+    doSearch();
+  }
+}
+
+/* ====== STUDENT SEARCH ====== */
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const resultsEl = document.getElementById('searchResults');
+
+  if (!q) {
+    resultsEl.classList.remove('show');
+    resultsEl.innerHTML = '';
+    return;
+  }
+
+  // Filter invoices — name, parent, or invoice number
+  const matches = cloudInvoices.filter(inv => {
+    const student = String(inv.student || '').toLowerCase();
+    const parent = String(inv.parent || '').toLowerCase();
+    const invNo = String(inv.invNumber || '').toLowerCase();
+    const contact = String(inv.contact || '').toLowerCase();
+    return student.includes(q) || parent.includes(q) || invNo.includes(q) || contact.includes(q);
+  });
+
+  resultsEl.classList.add('show');
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = `<div class="search-empty">No matches found in ${escapeHtml(document.getElementById('academicYear').value)}</div>`;
+    return;
+  }
+
+  // Group matches by student name (lowercase key) for student-centric view
+  const groups = {};
+  matches.forEach(inv => {
+    const key = String(inv.student || '').toLowerCase().trim() || '__unknown__';
+    if (!groups[key]) groups[key] = { studentName: inv.student || '(no name)', parent: inv.parent, contact: inv.contact, program: inv.program, invoices: [] };
+    groups[key].invoices.push(inv);
+  });
+
+  const groupKeys = Object.keys(groups);
+  let html = '';
+  groupKeys.forEach(key => {
+    const g = groups[key];
+    // Sort invoices by date descending
+    g.invoices.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const invoiceCount = g.invoices.length;
+    html += `
+      <div class="search-result-student">
+        <div class="s-info">
+          <div class="s-name">${escapeHtml(g.studentName)}</div>
+          <div class="s-meta">Parent: ${escapeHtml(g.parent || '—')} · Contact: ${escapeHtml(g.contact || '—')} · ${escapeHtml(PROGRAMS[g.program]?.name || '')} · ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}</div>
+        </div>
+        <button class="btn btn-accent btn-sm" onclick="showStudentPaymentHistory('${escapeAttr(key)}')">💳 View Payments</button>
+      </div>
+    `;
+    g.invoices.forEach(inv => {
+      const idx = cloudInvoices.indexOf(inv);
+      const bal = parseBalance(inv.balance);
+      const balClass = bal > 0 ? 'due' : 'paid';
+      const balText = bal > 0 ? `${inv.balance} due` : 'Paid';
+      html += `
+        <div class="search-result-invoice">
+          <div>
+            <div class="r-no">${escapeHtml(inv.invNumber)}</div>
+            <div class="r-date">${escapeHtml(inv.date || '')}</div>
+          </div>
+          <div style="font-size:11px; color:#4b5563">Total: <strong>${escapeHtml(String(inv.total || ''))}</strong></div>
+          <div class="r-bal ${balClass}">${escapeHtml(balText)}</div>
+          <button class="btn btn-primary btn-sm" onclick="loadFromHistory(${idx}); clearSearch();">Load</button>
+        </div>
+      `;
+    });
+  });
+
+  resultsEl.innerHTML = html;
+}
+
+function parseBalance(balStr) {
+  if (balStr == null) return 0;
+  const n = parseFloat(String(balStr).replace(/[₹,\s]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchResults').classList.remove('show');
+}
+
+/* ====== STUDENT PAYMENT HISTORY MODAL ====== */
+function showStudentPaymentHistory(studentKey) {
+  // Collect all invoices for this student (matched by lowercase name)
+  const studentInvoices = cloudInvoices.filter(inv => {
+    const k = String(inv.student || '').toLowerCase().trim() || '__unknown__';
+    return k === studentKey;
+  });
+
+  if (studentInvoices.length === 0) return;
+
+  // Sort by date descending
+  studentInvoices.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+  const studentName = studentInvoices[0].student || '(no name)';
+  document.getElementById('phModalTitle').textContent = `💳 Payment History — ${studentName}`;
+
+  let grandTotal = 0;
+  let grandPaid = 0;
+
+  let html = '';
+  studentInvoices.forEach(inv => {
+    const payments = inv.payments || [];
+    const totalNum = parseBalance(inv.total);
+    const paidNum = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const balNum = totalNum - paidNum;
+    grandTotal += totalNum;
+    grandPaid += paidNum;
+
+    const balClass = balNum > 0 ? 'due' : 'paid';
+    const balLabel = balNum > 0 ? `₹${Math.round(balNum).toLocaleString('en-IN')} due` : (balNum < 0 ? `₹${Math.round(Math.abs(balNum)).toLocaleString('en-IN')} refund` : 'Fully paid');
+
+    let paymentRowsHtml = '';
+    if (payments.length === 0) {
+      paymentRowsHtml = '<tr><td colspan="4" class="no-payments">No payments recorded yet</td></tr>';
+    } else {
+      payments.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+      payments.forEach(p => {
+        paymentRowsHtml += `
+          <tr>
+            <td>${escapeHtml(formatDisplayDate(p.date))}</td>
+            <td>${escapeHtml(p.mode || '—')}</td>
+            <td>${escapeHtml(p.ref || '—')}</td>
+            <td class="amt">₹${Math.round(parseFloat(p.amount) || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        `;
+      });
+    }
+
+    html += `
+      <div class="payment-history-section">
+        <div class="phs-header">
+          <div>
+            <div class="phs-inv">${escapeHtml(inv.invNumber)}</div>
+            <div class="phs-summary">${escapeHtml(formatDisplayDate(inv.date))} · ${escapeHtml(PROGRAMS[inv.program]?.name || '')} · Total: <strong>₹${Math.round(totalNum).toLocaleString('en-IN')}</strong> · Paid: <strong>₹${Math.round(paidNum).toLocaleString('en-IN')}</strong></div>
+          </div>
+          <div class="phs-balance ${balClass}">${escapeHtml(balLabel)}</div>
+        </div>
+        <table class="payment-table">
+          <thead>
+            <tr><th>Date</th><th>Mode</th><th>Reference</th><th style="text-align:right">Amount</th></tr>
+          </thead>
+          <tbody>${paymentRowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  const grandBalance = grandTotal - grandPaid;
+  const grandBalLabel = grandBalance > 0 ? `₹${Math.round(grandBalance).toLocaleString('en-IN')} due` : (grandBalance < 0 ? `₹${Math.round(Math.abs(grandBalance)).toLocaleString('en-IN')} refund` : 'All settled');
+
+  html += `
+    <div class="phs-totals">
+      <span class="phs-total-label">Across ${studentInvoices.length} invoice${studentInvoices.length === 1 ? '' : 's'} · Billed: ₹${Math.round(grandTotal).toLocaleString('en-IN')} · Paid: ₹${Math.round(grandPaid).toLocaleString('en-IN')}</span>
+      <span class="phs-total-amt">${escapeHtml(grandBalLabel)}</span>
+    </div>
+  `;
+
+  document.getElementById('phModalBody').innerHTML = html;
+  document.getElementById('paymentHistoryModal').classList.add('show');
+}
+
+function closePaymentHistory() {
+  document.getElementById('paymentHistoryModal').classList.remove('show');
+}
+
+function formatDisplayDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+  } catch(e) {
+    return String(d);
+  }
+}
+
+function loadFromHistory(i) {
+  const h = cloudInvoices[i];
+  if (!h) return;
+  document.getElementById('customInvNo').checked = !!h.customInvNo;
+  // Skip the async refresh in toggle
+  if (h.customInvNo) {
+    document.getElementById('invNumber').removeAttribute('readonly');
+  } else {
+    document.getElementById('invNumber').setAttribute('readonly', true);
+  }
+  document.getElementById('invNumber').value = h.invNumber;
+  document.getElementById('invDate').value = h.date;
+  document.getElementById('studentName').value = h.student || '';
+  document.getElementById('parentName').value = h.parent || '';
+  document.getElementById('contact').value = h.contact || '';
+  document.getElementById('program').value = h.program || 'playgroup';
+  document.getElementById('academicYear').value = h.academicYear || '2026-2027';
+  document.getElementById('gstEnabled').checked = !!h.gstEnabled;
+  document.getElementById('gstNumber').value = h.gstNumber || '';
+  document.getElementById('gstName').value = h.gstName || '';
+  toggleGst();
+  currentFees = JSON.parse(JSON.stringify(h.fees || PROGRAMS[h.program || 'playgroup'].components));
+  renderFees();
+  const t = h.transport || {};
+  document.getElementById('transportEnabled').checked = !!t.enabled;
+  document.getElementById('transportZone').value = t.zone || '';
+  document.getElementById('transportDesc').value = t.desc || '';
+  document.getElementById('transportAmount').value = t.amount || 0;
+  document.getElementById('transportPeriod').value = t.period || '';
+  toggleTransport();
+  const d = h.daycare || {};
+  document.getElementById('daycareEnabled').checked = !!d.enabled;
+  document.getElementById('daycareAmount').value = d.amount || 5000;
+  document.getElementById('daycarePeriod').value = d.period || '';
+  toggleDaycare();
+  document.getElementById('discount').value = h.discount || 0;
+  document.getElementById('discountReason').value = h.discountReason || '';
+  payments = JSON.parse(JSON.stringify(h.payments || []));
+  renderPayments();
+  calcTotal();
+}
+
+async function deleteHistory(i) {
+  const h = cloudInvoices[i];
+  if (!h) return;
+  if (!confirm(`Delete invoice ${h.invNumber} from Google Sheet? This cannot be undone.`)) return;
+
+  if (scriptUrl) {
+    setSyncStatus('syncing', 'Deleting from Google Sheet...');
+    try {
+      await callScript({ action: 'delete', invNumber: h.invNumber, ay: h.academicYear }, 'POST');
+      await syncFromCloud();
+    } catch (err) {
+      alert('Cloud delete failed: ' + err.message);
+      setSyncStatus('error', 'Delete failed');
+      return;
+    }
+  } else {
+    cloudInvoices.splice(i, 1);
+    localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudInvoices));
+    renderHistory();
+  }
+}
+
+function resetForm() {
+  if (!confirm('Start a new invoice? Unsaved changes will be lost.')) return;
+  document.getElementById('customInvNo').checked = false;
+  toggleCustomInvNo();
+  document.getElementById('studentName').value = '';
+  document.getElementById('parentName').value = '';
+  document.getElementById('contact').value = '';
+  document.getElementById('gstEnabled').checked = false;
+  document.getElementById('gstNumber').value = '';
+  document.getElementById('gstName').value = '';
+  toggleGst();
+  document.getElementById('transportEnabled').checked = false;
+  document.getElementById('transportZone').value = '';
+  document.getElementById('transportDesc').value = '';
+  document.getElementById('transportAmount').value = 0;
+  document.getElementById('transportPeriod').value = '';
+  toggleTransport();
+  document.getElementById('daycareEnabled').checked = false;
+  document.getElementById('daycareAmount').value = 5000;
+  document.getElementById('daycarePeriod').value = '';
+  toggleDaycare();
+  document.getElementById('discount').value = 0;
+  document.getElementById('discountReason').value = '';
+  payments = [];
+  renderPayments();
+  document.getElementById('invDate').valueAsDate = new Date();
+  document.getElementById('validationBanner').classList.remove('show');
+  document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+  loadProgram();
+}
+
+function prepPrintArea() {
+  document.getElementById('printArea').innerHTML = document.getElementById('invoicePreview').innerHTML;
+}
+
+async function downloadPDF() {
+  if (!validateForm()) return;
+  const preview = document.getElementById('invoicePreview');
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = preview.innerHTML;
+  printArea.style.display = 'block';
+  printArea.style.position = 'fixed';
+  printArea.style.left = '-9999px';
+  printArea.style.top = '0';
+  printArea.style.width = '210mm';
+  printArea.style.minHeight = '297mm';
+  printArea.style.padding = '30mm 15mm 25mm 15mm';
+  printArea.style.background = 'white';
+  printArea.style.fontSize = '11px';
+  printArea.style.fontFamily = '"Helvetica Neue", Arial, sans-serif';
+
+  try {
+    const canvas = await html2canvas(printArea, { scale: 2, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = 210, pageH = 297;
+    const imgH = (canvas.height * pageW) / canvas.width;
+    if (imgH <= pageH) {
+      pdf.addImage(imgData, 'PNG', 0, 0, pageW, imgH);
+    } else {
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
+        heightLeft -= pageH;
+      }
+    }
+    const invNo = (document.getElementById('invNumber').value || 'invoice').replace(/[\/\\:*?"<>|]/g, '-');
+    const student = (document.getElementById('studentName').value || 'student').replace(/[\/\\:*?"<>|]/g, '-');
+    pdf.save(`${invNo}_${student}.pdf`);
+  } catch (e) {
+    alert('PDF generation failed: ' + e.message);
+  } finally {
+    printArea.style.display = 'none';
+    printArea.style.position = 'absolute';
+    printArea.style.left = '0';
+  }
+}
+
+function printInvoice() {
+  if (!validateForm()) return;
+  prepPrintArea();
+  window.print();
+}
+
+window.addEventListener('beforeprint', prepPrintArea);
+
+init();
+</script>
+
+</body>
+</html>
