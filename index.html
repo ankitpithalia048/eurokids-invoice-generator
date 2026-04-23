@@ -1120,9 +1120,9 @@ function validateForm() {
     if (!gn.value.trim()) { gn.classList.add('invalid'); errors.push('GSTIN is required when GST is enabled'); }
   }
 
-  // Fees - at least one item with amount > 0
-  const totalFees = currentFees.reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
-  if (totalFees <= 0) errors.push('Fee components total must be greater than 0');
+  // // Fees - at least one item with amount > 0
+  // const totalFees = currentFees.reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+  // if (totalFees <= 0) errors.push('Fee components total must be greater than 0');
 
   const banner = document.getElementById('validationBanner');
   const list = document.getElementById('validationList');
@@ -1247,7 +1247,9 @@ function renderPreview(t) {
     <div class="inv-notes">
       <div class="hd">Notes</div>
       • Late fee of ₹30/day is chargeable after September 24th.<br>
-      • Access Home Buddy App · User ID: Registered Phone number.<br>
+      • Access Home Buddy App <br>
+          · User ID: Registered Phone number. 
+          · Password: jejreuhre2.<br>
       • Transportation is available as per distance.<br>
       • Fees once paid are non-refundable &amp; non-transferable.
     </div>
