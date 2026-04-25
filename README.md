@@ -1,4 +1,4 @@
-# Eurokids — Invoice Generator
+# Eurokids VIP Colony — Invoice Generator
 
 A student-centric invoice generator backed by **Google Sheets**. Search for an enrolled student by name, parent name, contact, or invoice number — then either load any past invoice to amend, or view a full payment history across all their invoices. No duplicate records, no manual tracking. Works fully offline with local cache when the sheet is unreachable.
 
@@ -347,16 +347,26 @@ Search for `<div class="hd">Notes</div>` in the script. Edit the lines below it 
 
 ## Printing on Letterhead
 
-The invoice reserves **30mm at the top** and **25mm at the bottom** of A4 for your pre-printed letterhead (logo, address, phone, social handles).
+The invoice now ships with the **letterhead built in** — Eurokids logo and "VIP COLONY" at the top, navy footer with phone, website, and address at the bottom (matching the design from the official Eurokids letterhead PDF). You can print on **plain A4 paper** without needing pre-printed letterhead.
 
 Print settings:
 - **Paper size**: A4
 - **Margins**: None (or Default if None unavailable)
 - **Scale**: 100% (don't use "Fit to page")
-- **Headers and footers**: OFF
-- Load letterhead paper, print.
+- **Headers and footers**: OFF (uncheck "Headers and footers" in the browser print dialog)
+- Load plain A4 paper, print.
 
-For PDFs emailed to parents, the top/bottom spaces appear blank.
+If you ever want to print on pre-printed letterhead instead, you can hide the built-in header/footer by editing the CSS in `index.html` (search for `.inv-letterhead-top` and `.inv-letterhead-bottom` and set `display: none`).
+
+The PDF download (📄 Download PDF) also includes the letterhead. Parents emailed the PDF will see a fully branded invoice.
+
+### Replacing the logo
+
+The Eurokids logo is embedded as base64 inside `index.html`. To swap it for a new logo:
+
+1. Convert your new logo to base64: at [base64-image.de](https://www.base64-image.de/) upload your PNG
+2. Copy the resulting `data:image/png;base64,...` string
+3. In `index.html`, search for `const LOGO_BASE64 = ` and replace the value with your new string
 
 ---
 
