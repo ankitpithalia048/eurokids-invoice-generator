@@ -602,6 +602,7 @@
       <option value="nursery">Nursery</option>
       <option value="eurojunior">Euro Junior</option>
       <option value="eurosenior">Euro Senior</option>
+      <option value="summerclass">Summer Classes</option>
     </select>
 
     <h2>Fee Components</h2>
@@ -795,7 +796,10 @@ const PROGRAMS = {
     { label: "Uniform", amount: 2150 },
     { label: "Annual Trip & Events", amount: 6000 },
     { label: "Enrollment Fees", amount: 10000 }
-  ]}
+  ]},
+  summerclass: { name: "Summer Classes", components: [
+    { label: "Summer class Program", amount: 3000 }
+]}
 };
 
 let currentFees = [];
