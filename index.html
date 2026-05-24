@@ -139,26 +139,47 @@
   .invoice-preview {
     background: white;
     width: 100%;
-    aspect-ratio: 210 / 297;
+    min-height: calc(100vw * 297 / 210 * 0.5);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0;
     color: #1f2937;
     font-family: "Helvetica Neue", Arial, sans-serif;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative;
+  }
+  /* Visual marker showing where A4 would end in the preview */
+  .page-break-indicator {
+    position: relative;
+    height: 0;
+    border-top: 2px dashed var(--orange);
+    margin: 8px 0;
+    text-align: center;
+  }
+  .page-break-indicator::before {
+    content: '— Page break —';
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    color: var(--orange-dark);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 8px;
+    letter-spacing: 0.5px;
   }
 
   /* ====== Letterhead Header ====== */
   .inv-letterhead-top {
-    padding: 5mm 15mm 2mm 15mm;
+    padding: 3mm 15mm 1mm 15mm;
     text-align: center;
     flex-shrink: 0;
   }
   .inv-letterhead-top .logo {
-    max-width: 110px;
-    max-height: 95px;
+    max-width: 140px;
+    max-height: 120px;
     margin: 0 auto;
     display: block;
   }
@@ -167,8 +188,7 @@
   .inv-body {
     flex: 1;
     padding: 2mm 15mm 3mm 15mm;
-    font-size: 9px;
-    overflow: hidden;
+    font-size: 13px;
   }
 
   /* ====== Footer Bar ====== */
@@ -176,7 +196,7 @@
     background: #1e3a8a;
     color: white;
     padding: 7px 15mm;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 500;
     display: flex;
     justify-content: space-between;
@@ -206,61 +226,61 @@
     border-bottom: 2px solid var(--sky);
   }
   .inv-title-bar .inv-title {
-    font-size: 16px; font-weight: 700;
+    font-size: 22px; font-weight: 700;
     color: var(--sky-dark); letter-spacing: 4px;
   }
   .inv-sub-block {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 6px;
-    font-size: 9px;
+    margin-bottom: 7px;
+    font-size: 13px;
     gap: 10px;
   }
   .inv-sub-block .left { text-align: left; }
   .inv-sub-block .right { text-align: right; }
-  .inv-sub-block .inv-no { color: var(--sky-dark); font-weight: 700; font-size: 10px; }
-  .inv-sub-block .inv-date { color: var(--orange-dark); font-weight: 700; font-size: 10px; }
-  .inv-sub-block .inv-gst { color: #1f2937; margin-top: 2px; line-height: 1.3; font-size: 8.5px; }
+  .inv-sub-block .inv-no { color: var(--sky-dark); font-weight: 700; font-size: 14px; }
+  .inv-sub-block .inv-date { color: var(--orange-dark); font-weight: 700; font-size: 14px; }
+  .inv-sub-block .inv-gst { color: #1f2937; margin-top: 2px; line-height: 1.3; font-size: 12.5px; }
   .inv-sub-block .inv-gst strong { color: var(--sky-dark); font-weight: 700; }
 
   .inv-meta {
     display: grid; grid-template-columns: 1fr 1fr;
-    gap: 6px; margin-bottom: 6px; font-size: 9px;
+    gap: 6px; margin-bottom: 7px; font-size: 13px;
   }
   .inv-meta .box {
     border: 1px solid var(--border);
-    padding: 4px 7px; border-radius: 4px;
+    padding: 5px 8px; border-radius: 4px;
   }
   .inv-meta .box .lbl {
-    font-size: 7.5px; color: #374151;
+    font-size: 11px; color: #374151;
     text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;
   }
-  .inv-meta .box .val { font-size: 10px; font-weight: 700; margin-top: 2px; color: #111827; }
-  .inv-meta .box .sub { font-size: 8.5px; color: #1f2937; margin-top: 1px; }
+  .inv-meta .box .val { font-size: 14px; font-weight: 700; margin-top: 2px; color: #111827; }
+  .inv-meta .box .sub { font-size: 12.5px; color: #1f2937; margin-top: 1px; }
 
   .inv-table {
     width: 100%; border-collapse: collapse;
-    margin-bottom: 5px; font-size: 9px;
+    margin-bottom: 6px; font-size: 13px;
   }
   .inv-table th {
     background: var(--sky-dark); color: #ffffff;
-    padding: 4px 7px; text-align: left;
-    font-size: 9px; font-weight: 700;
+    padding: 5px 8px; text-align: left;
+    font-size: 13px; font-weight: 700;
     letter-spacing: 0.3px;
   }
   .inv-table th.right, .inv-table td.right { text-align: right; }
   .inv-table td {
-    padding: 3px 7px; border-bottom: 1px solid var(--border);
+    padding: 4px 8px; border-bottom: 1px solid var(--border);
     color: #111827;
   }
   .inv-table tr.discount td { color: var(--orange-dark); font-weight: 600; }
   .inv-table tr.subtotal td { font-weight: 700; background: #f3f4f6; color: #111827; }
   .inv-table tr.total td {
     background: var(--sky-light); font-weight: 700;
-    font-size: 10.5px; color: var(--sky-dark);
+    font-size: 14.5px; color: var(--sky-dark);
     border-top: 2px solid var(--sky); border-bottom: none;
-    padding: 5px 7px;
+    padding: 6px 8px;
   }
   .inv-table.payments th { background: var(--orange-dark); color: #ffffff; }
   .inv-table.payments tr.total td {
@@ -269,9 +289,9 @@
   }
 
   .inv-section-title {
-    font-size: 9px; font-weight: 700;
+    font-size: 13px; font-weight: 700;
     color: var(--sky-dark); text-transform: uppercase;
-    letter-spacing: 0.5px; margin-top: 5px; margin-bottom: 3px;
+    letter-spacing: 0.5px; margin-top: 6px; margin-bottom: 3px;
     padding-bottom: 2px; border-bottom: 1px solid #bae6fd;
   }
   .inv-section-title.accent {
@@ -279,19 +299,19 @@
     border-bottom-color: #fed7aa;
   }
   .inv-notes {
-    font-size: 8.5px; color: #1f2937; line-height: 1.4;
-    margin-top: 6px; padding-top: 4px;
+    font-size: 12.5px; color: #1f2937; line-height: 1.45;
+    margin-top: 7px; padding-top: 5px;
     border-top: 1px dashed #d1d5db;
   }
-  .inv-notes .hd { font-weight: 700; color: #111827; font-size: 9.5px; margin-bottom: 2px; }
+  .inv-notes .hd { font-weight: 700; color: #111827; font-size: 13.5px; margin-bottom: 3px; }
   .inv-sign {
     display: flex; justify-content: space-between;
-    margin-top: 18px; font-size: 9px; color: #374151;
+    margin-top: 20px; font-size: 13px; color: #374151;
   }
   .inv-sign .sign-box { text-align: center; width: 40%; }
   .inv-sign .sign-line {
     border-top: 1px solid #374151;
-    padding-top: 3px; margin-top: 22px;
+    padding-top: 3px; margin-top: 24px;
     font-weight: 600;
   }
 
@@ -602,7 +622,6 @@
       <option value="nursery">Nursery</option>
       <option value="eurojunior">Euro Junior</option>
       <option value="eurosenior">Euro Senior</option>
-      <option value="summerclass">Summer Classes</option>
     </select>
 
     <h2>Fee Components</h2>
@@ -715,7 +734,7 @@
 
   <div class="panel">
     <h1>Live Preview</h1>
-    <div class="subtitle">A4 · full letterhead included (print on plain paper)</div>
+    <div class="subtitle">Auto-paginates across A4 pages · letterhead on every page</div>
     <div id="invoicePreview" class="invoice-preview"></div>
   </div>
 
@@ -796,10 +815,7 @@ const PROGRAMS = {
     { label: "Uniform", amount: 2150 },
     { label: "Annual Trip & Events", amount: 6000 },
     { label: "Enrollment Fees", amount: 10000 }
-  ]},
-  summerclass: { name: "Summer Classes", components: [
-    { label: "Summer class Program", amount: 3000 }
-]}
+  ]}
 };
 
 let currentFees = [];
@@ -1695,62 +1711,285 @@ function prepPrintArea() {
   document.getElementById('printArea').innerHTML = document.getElementById('invoicePreview').innerHTML;
 }
 
+/**
+ * Build a single A4-sized DOM page with:
+ *   - Letterhead header (always)
+ *   - Body content (passed in as HTML string)
+ *   - Letterhead footer (always)
+ * Used both for measurement and for rendering each PDF page.
+ */
+function buildPageElement(bodyInnerHtml) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `
+    width: 210mm;
+    height: 297mm;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    box-sizing: border-box;
+    overflow: hidden;
+  `;
+  wrap.innerHTML = `
+    <div class="inv-letterhead-top">
+      <img src="${LOGO_BASE64}" class="logo" alt="Eurokids">
+    </div>
+    <div class="inv-body" style="flex:1; overflow:hidden;">
+      ${bodyInnerHtml}
+    </div>
+    <div class="inv-letterhead-bottom">
+      <span class="ft-item">📞 6261474134</span>
+      <span class="ft-item">🌐 www.eurokidsindia.com</span>
+      <span class="ft-item">📍 H.no 2, Golden homes, VIP Colony</span>
+    </div>
+  `;
+  return wrap;
+}
+
+/**
+ * Extract just the body innerHTML from the live preview
+ * (everything inside .inv-body — the actual invoice content).
+ */
+function getInvoiceBodyHtml() {
+  const preview = document.getElementById('invoicePreview');
+  const body = preview.querySelector('.inv-body');
+  return body ? body.innerHTML : '';
+}
+
+/**
+ * Split body HTML into "blocks" — top-level child elements.
+ * The signature block (.inv-sign) is identified separately so we can
+ * always place it on the last page.
+ */
+function getBodyBlocks() {
+  const preview = document.getElementById('invoicePreview');
+  const body = preview.querySelector('.inv-body');
+  if (!body) return { blocks: [], signature: null };
+
+  const blocks = [];
+  let signature = null;
+  const children = Array.from(body.children);
+
+  let i = 0;
+  while (i < children.length) {
+    const child = children[i];
+    if (child.classList && child.classList.contains('inv-sign')) {
+      signature = child.outerHTML;
+      i++;
+      continue;
+    }
+    // Group a section title with the immediately following table to prevent orphans
+    if (child.classList && child.classList.contains('inv-section-title')
+        && i + 1 < children.length
+        && children[i+1].tagName === 'TABLE') {
+      blocks.push(child.outerHTML + children[i+1].outerHTML);
+      i += 2;
+      continue;
+    }
+    blocks.push(child.outerHTML);
+    i++;
+  }
+  return { blocks, signature };
+}
+
+/**
+ * Measure how tall a list of HTML blocks renders inside the page body area.
+ * Renders off-screen and returns the actual height in CSS pixels.
+ */
+async function measureBlocksHeight(blocksHtml) {
+  const page = buildPageElement(blocksHtml);
+  page.style.position = 'fixed';
+  page.style.left = '-9999px';
+  page.style.top = '0';
+  // Allow content to expand vertically for measurement
+  page.style.height = 'auto';
+  const bodyEl = page.querySelector('.inv-body');
+  bodyEl.style.overflow = 'visible';
+  bodyEl.style.flex = 'none';
+  document.body.appendChild(page);
+  // Wait one frame for layout
+  await new Promise(r => requestAnimationFrame(r));
+  const bodyHeight = bodyEl.scrollHeight;
+  document.body.removeChild(page);
+  return bodyHeight;
+}
+
+/**
+ * Compute the available body height inside an A4 page given the
+ * letterhead header + footer sizes by measuring an empty page.
+ */
+async function getAvailableBodyHeight() {
+  const page = buildPageElement('');
+  page.style.position = 'fixed';
+  page.style.left = '-9999px';
+  page.style.top = '0';
+  document.body.appendChild(page);
+  await new Promise(r => requestAnimationFrame(r));
+  const bodyHeight = page.querySelector('.inv-body').clientHeight;
+  document.body.removeChild(page);
+  return bodyHeight;
+}
+
+/**
+ * Split blocks into pages so that each page's content fits within
+ * the available body height. Signature block goes on the last page only.
+ */
+async function paginateBlocks(blocks, signatureHtml) {
+  const avail = await getAvailableBodyHeight();
+  const pages = [];
+  let currentPage = [];
+
+  // Helper to measure current candidate
+  const measure = async (blocksList) => {
+    return await measureBlocksHeight(blocksList.join(''));
+  };
+
+  for (let i = 0; i < blocks.length; i++) {
+    const candidate = currentPage.concat([blocks[i]]);
+    const candidateHeight = await measure(candidate);
+
+    if (candidateHeight <= avail) {
+      currentPage = candidate;
+    } else {
+      // Block doesn't fit — flush current page and start new one
+      if (currentPage.length > 0) {
+        pages.push(currentPage);
+        currentPage = [blocks[i]];
+      } else {
+        // Single block too tall for one page — accept overflow and move on
+        pages.push([blocks[i]]);
+        currentPage = [];
+      }
+    }
+  }
+
+  if (currentPage.length > 0) pages.push(currentPage);
+  if (pages.length === 0) pages.push([]);
+
+  // Add signature to last page (try to fit, else create new page)
+  if (signatureHtml) {
+    const lastIdx = pages.length - 1;
+    const withSig = pages[lastIdx].concat([signatureHtml]);
+    const withSigHeight = await measure(withSig);
+    if (withSigHeight <= avail) {
+      pages[lastIdx] = withSig;
+    } else {
+      pages.push([signatureHtml]);
+    }
+  }
+
+  return pages.map(blocks => blocks.join(''));
+}
+
 async function downloadPDF() {
   if (!validateForm()) return;
-  const preview = document.getElementById('invoicePreview');
-  const printArea = document.getElementById('printArea');
-  printArea.innerHTML = preview.innerHTML;
-  printArea.style.display = 'flex';
-  printArea.style.flexDirection = 'column';
-  printArea.style.position = 'fixed';
-  printArea.style.left = '-9999px';
-  printArea.style.top = '0';
-  printArea.style.width = '210mm';
-  printArea.style.minHeight = '297mm';
-  printArea.style.padding = '0';
-  printArea.style.background = 'white';
-  printArea.style.fontFamily = '"Helvetica Neue", Arial, sans-serif';
 
+  let pagesContainer = null;
   try {
-    const canvas = await html2canvas(printArea, { scale: 2, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
+    const { blocks, signature } = getBodyBlocks();
+    const pages = await paginateBlocks(blocks, signature);
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageW = 210, pageH = 297;
-    const imgH = (canvas.height * pageW) / canvas.width;
-    if (imgH <= pageH) {
-      pdf.addImage(imgData, 'PNG', 0, 0, pageW, imgH);
-    } else {
-      let heightLeft = imgH;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pageW, imgH);
-        heightLeft -= pageH;
-      }
+
+    // Render each page off-screen and capture to PDF
+    pagesContainer = document.createElement('div');
+    pagesContainer.style.position = 'fixed';
+    pagesContainer.style.left = '-9999px';
+    pagesContainer.style.top = '0';
+    document.body.appendChild(pagesContainer);
+
+    for (let i = 0; i < pages.length; i++) {
+      const pageEl = buildPageElement(pages[i]);
+      pagesContainer.innerHTML = '';
+      pagesContainer.appendChild(pageEl);
+      // Wait for images / layout
+      await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r => setTimeout(r, 50));
+
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        windowWidth: pageEl.offsetWidth,
+        windowHeight: pageEl.offsetHeight
+      });
+      const imgData = canvas.toDataURL('image/png');
+
+      if (i > 0) pdf.addPage();
+      // Map the canvas to exactly A4 — no overflow, no blank page
+      pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH);
     }
+
     const invNo = (document.getElementById('invNumber').value || 'invoice').replace(/[\/\\:*?"<>|]/g, '-');
     const student = (document.getElementById('studentName').value || 'student').replace(/[\/\\:*?"<>|]/g, '-');
     pdf.save(`${invNo}_${student}.pdf`);
   } catch (e) {
     alert('PDF generation failed: ' + e.message);
   } finally {
-    printArea.style.display = 'none';
-    printArea.style.position = 'absolute';
-    printArea.style.left = '0';
+    if (pagesContainer && pagesContainer.parentNode) {
+      pagesContainer.parentNode.removeChild(pagesContainer);
+    }
   }
 }
 
-function printInvoice() {
+/**
+ * For browser Print — we build a multi-page version of the invoice
+ * with proper page breaks inserted, so the browser print dialog
+ * shows the same layout as the PDF.
+ */
+async function preparePrintLayout() {
+  const { blocks, signature } = getBodyBlocks();
+  const pages = await paginateBlocks(blocks, signature);
+
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = '';
+
+  pages.forEach((pageHtml, idx) => {
+    const pageEl = document.createElement('div');
+    pageEl.className = 'print-page';
+    pageEl.style.cssText = `
+      width: 210mm;
+      height: 297mm;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+      page-break-after: ${idx < pages.length - 1 ? 'always' : 'auto'};
+    `;
+    pageEl.innerHTML = `
+      <div class="inv-letterhead-top">
+        <img src="${LOGO_BASE64}" class="logo" alt="Eurokids">
+      </div>
+      <div class="inv-body" style="flex:1; overflow:hidden;">
+        ${pageHtml}
+      </div>
+      <div class="inv-letterhead-bottom">
+        <span class="ft-item">📞 6261474134</span>
+        <span class="ft-item">🌐 www.eurokidsindia.com</span>
+        <span class="ft-item">📍 H.no 2, Golden homes, VIP Colony</span>
+      </div>
+    `;
+    printArea.appendChild(pageEl);
+  });
+}
+
+async function printInvoice() {
   if (!validateForm()) return;
-  prepPrintArea();
+  await preparePrintLayout();
   window.print();
 }
 
-window.addEventListener('beforeprint', prepPrintArea);
+// beforeprint kept for keyboard Ctrl+P — prepare default single-page if needed
+window.addEventListener('beforeprint', () => {
+  const printArea = document.getElementById('printArea');
+  if (!printArea.innerHTML.trim()) {
+    // Fallback: at least copy the preview so something prints
+    printArea.innerHTML = document.getElementById('invoicePreview').innerHTML;
+  }
+});
 
 init();
 </script>
