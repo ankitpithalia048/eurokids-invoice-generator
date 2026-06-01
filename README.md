@@ -1,6 +1,6 @@
-# Eurokids VIP Colony — Invoice Generator
+# Eurokids VIP Colony — Invoice Generator + Caretaker Onboarding
 
-A student-centric invoice generator backed by **Google Sheets**. Search for an enrolled student by name, parent name, contact, or invoice number — then either load any past invoice to amend, or view a full payment history across all their invoices. No duplicate records, no manual tracking. Works fully offline with local cache when the sheet is unreachable.
+A Eurokids VIP Colony app for **Golden Homes** that includes both invoice management and caretaker onboarding. The invoice app is backed by **Google Sheets**, while the caretaker workflow captures candidate details, uploads PDF documents to Drive, and stores consent forms in the same spreadsheet backend. Search by student name, parent name, contact, or invoice number; or search caretaker candidates by name, mobile, email, or caste. No duplicate records, no manual tracking. Works fully offline with local cache when the sheet is unreachable.
 
 ![Sample Invoice](sample_invoice.png)
 
@@ -145,6 +145,31 @@ https://<your-username>.github.io/eurokids-invoice/
 3. Click **⚙ Settings**
 4. Paste the **Apps Script Web App URL** you copied in Step 1.6
 5. Click **Save & Test Connection**
+
+## Caretaker Onboarding
+
+A new caretaker onboarding page has been added to this project:
+
+- Launch the app from `index.html`
+- Click the **Caretaker Onboarding** tile to open `caretaker.html`
+- Use **Settings** to enter the Apps Script URL for the caretaker onboarding backend and a Google Drive folder URL for file uploads
+- If you use a `/dev` URL for testing, note that it can require you to be signed into the script owner account; for shared use, deploy the script to `/exec` with access set to Anyone
+- Upload **Aadhar/Voter ID** and **Education Certificate** PDFs
+- Generate the caretaker consent form and upload it to Drive
+- Candidate details are stored in a separate `Caretakers` sheet in the caretaker spreadsheet
+
+Suggested Drive folder URL for document storage:
+
+`https://drive.google.com/drive/u/0/folders/1nD149XjkdHmU8fGU_1aaDC3m-ImQBQDq`
+
+### Apps Script structure
+
+The project now includes a dedicated `apps-script` folder with separate Apps Script files for each app:
+
+- `apps-script/invoice.gs` — invoice backend logic and sheet storage, self-contained for the invoice app
+- `apps-script/caretaker.gs` — caretaker onboarding logic, separate candidate sheet, and file uploads, self-contained for the caretaker app
+
+If you deploy to Google Apps Script, copy the contents of these files into the script editor as separate `.gs` files.
 
 If everything's right, the sync bar turns green: **"Connected · 0 invoices in sheet (2026-2027)"**. Done.
 

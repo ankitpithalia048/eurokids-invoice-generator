@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eurokids VIP Colony - Golden Homes Caretaker Onboarding</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --sky: #0369a1;
+      --sky-dark: #075985;
+      --sky-light: #e0f2fe;
+      --orange: #ea580c;
+      --orange-dark: #c2410c;
+      --ink: #111827;
+      --muted: #64748b;
+      --surface: #ffffff;
+      --border: #d1d5db;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #f5f9ff; color: var(--ink); }
+    .page { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .header { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+    .header h1 { margin: 0; font-size: clamp(2rem, 2.5vw, 2.8rem); }
+    .header p { margin: 4px 0 0; color: var(--muted); max-width: 720px; }
+    .sync-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #ffffff; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; }
+    .sync-bar span { color: var(--muted); }
+    .sync-bar .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+    .sync-bar.connected .status-dot { background: #059669; }
+    .sync-bar.syncing .status-dot { background: var(--sky); }
+    .sync-bar.offline .status-dot { background: #9ca3af; }
+    .sync-bar.error .status-dot { background: var(--orange-dark); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { border: none; border-radius: 999px; padding: 11px 18px; cursor: pointer; font-weight: 700; letter-spacing: 0.01em; }
+    .btn-sm { padding: 8px 12px; font-size: 0.88rem; }
+    .btn-primary { background: var(--sky); color: white; }
+    .btn-secondary { background: #f8fafc; color: var(--ink); border: 1px solid var(--border); }
+    .btn-accent { background: var(--orange); color: white; }
+    .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+    .grid { display: grid; gap: 20px; grid-template-columns: 1.15fr 0.85fr; }
+    .panel { background: white; border-radius: var(--radius); border: 1px solid var(--border); padding: 22px; }
+    .panel h2 { margin: 0 0 14px; font-size: 1.05rem; color: var(--sky-dark); }
+    label { display: block; margin-bottom: 8px; font-size: 0.92rem; color: #374151; }
+    input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; font-size: 0.95rem; color: var(--ink); background: #fff; }
+    textarea { min-height: 104px; resize: vertical; }
+    .row { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .full-width { grid-column: 1 / -1; }
+    .field-note { margin-top: 6px; color: var(--muted); font-size: 0.86rem; }
+    .file-status { margin-top: 6px; font-size: 0.88rem; color: var(--muted); }
+    .file-status strong { color: var(--ink); }
+    .search-panel { display: grid; gap: 10px; }
+    .search-panel input { width: 100%; }
+    .result-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: #f8fbff; }
+    .result-item { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: white; border: 1px solid var(--border); }
+    .result-item + .result-item { margin-top: 12px; }
+    .result-title { font-weight: 700; color: var(--sky-dark); }
+    .result-sub { color: var(--muted); font-size: 0.92rem; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: 18px; width: 100%; max-width: 520px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.14); }
+    .modal h3 { margin-top: 0; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .hidden { display: none !important; }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav style="display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1280px; margin:12px auto 0; padding:8px 24px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a href="index.html" class="btn btn-ghost" style="padding:8px 12px; border-radius:8px;">🏠 Home</a>
+      <div style="position:relative;">
+        <button id="appsMenuBtn" class="btn btn-ghost" style="padding:8px 12px; border-radius:8px;">Apps ▾</button>
+        <div id="appsMenu" style="display:none; position:absolute; right:0; top:36px; background:white; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+          <a href="invoice.html" style="display:block; padding:8px 12px; text-decoration:none; color:#111827;">Invoice</a>
+          <a href="caretaker.html" style="display:block; padding:8px 12px; text-decoration:none; color:#111827;">Caretaker</a>
+        </div>
+      </div>
+    </div>
+    <div style="color:#6b7280; font-size:14px;">Eurokids Tools</div>
+  </nav>
+  <main class="page">
+    <div class="header">
+      <div>
+        <h1>Eurokids VIP Colony Caretaker Onboarding</h1>
+        <p>Collect candidate information for Golden Homes, upload ID and certificate PDFs to Drive, generate a consent form, and keep everything synced with its own caretaker Google Sheet backend.</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="openSettings()">⚙ Connect Caretaker Sheet</button>
+        <button class="btn btn-secondary" onclick="resetForm()">↻ New Candidate</button>
+      </div>
+    </div>
+
+  <script>
+    document.getElementById('appsMenuBtn').addEventListener('click', function() {
+      const m = document.getElementById('appsMenu');
+      m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    });
+    document.addEventListener('click', function(e) {
+      const menu = document.getElementById('appsMenu');
+      const btn = document.getElementById('appsMenuBtn');
+      if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+    });
+  </script>
+
+    <div id="syncBar" class="sync-bar">
+      <span class="status-dot"></span>
+      <span id="syncText">Not connected to Google Sheet</span>
+      <button class="btn btn-ghost" onclick="syncFromCloud()">↻ Refresh</button>
+      <button id="viewErrorButton" class="btn btn-ghost hidden" onclick="toggleErrorLog()">View error log</button>
+    </div>
+
+    <div id="errorLogPanel" class="panel hidden" style="margin-bottom:18px;">
+      <h2>Error Log</h2>
+      <pre id="errorLogContent" style="white-space: pre-wrap; word-break: break-word; max-height:240px; overflow:auto; padding:12px; border:1px solid #d1d5db; background:#f8fafc; margin:0;"></pre>
+      <div style="margin-top:12px; display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="toggleErrorLog()">Hide</button>
+        <button class="btn btn-primary btn-sm" onclick="copyErrorLog()">Copy</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Candidate Search</h2>
+        <div class="search-panel">
+          <label for="searchInput">Search by name, mobile, or email</label>
+          <input id="searchInput" type="text" placeholder="Search current candidates..." oninput="doSearch()">
+          <div id="searchResults"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Candidate Form</h2>
+        <div class="row">
+          <div>
+            <label>Name</label>
+            <input id="candidateName" type="text" placeholder="Full name">
+          </div>
+          <div>
+            <label>Mobile Number</label>
+            <input id="candidateMobile" type="text" placeholder="Primary mobile">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Alternate Number</label>
+            <input id="candidateAlternate" type="text" placeholder="Alternate mobile">
+          </div>
+          <div>
+            <label>Email</label>
+            <input id="candidateEmail" type="email" placeholder="Email address">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Date of Birth</label>
+            <input id="candidateDob" type="date">
+          </div>
+          <div>
+            <label>Gender</label>
+            <select id="candidateGender">
+              <option value="">Select gender</option>
+              <option>Female</option>
+              <option>Male</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Marital Status</label>
+            <select id="candidateMarital">
+              <option value="">Select status</option>
+              <option>Single</option>
+              <option>Married</option>
+              <option>Widowed</option>
+              <option>Divorced</option>
+            </select>
+          </div>
+          <div>
+            <label>Caste</label>
+            <input id="candidateCaste" type="text" placeholder="Caste">
+          </div>
+        </div>
+        <div class="row full-width">
+          <div>
+            <label>Address</label>
+            <textarea id="candidateAddress" placeholder="Residential address"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Pincode</label>
+            <input id="candidatePin" type="text" placeholder="Postal code">
+          </div>
+          <div>
+            <label>Education</label>
+            <input id="candidateEducation" type="text" placeholder="Highest qualification">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Experience (years)</label>
+            <input id="candidateExperience" type="number" min="0" placeholder="Experience years">
+          </div>
+          <div>
+            <label>Emergency Contact</label>
+            <input id="candidateEmergency" type="text" placeholder="Emergency number">
+          </div>
+        </div>
+        <div class="row full-width">
+          <div>
+            <label>Additional Notes</label>
+            <textarea id="candidateNotes" placeholder="Any other information"></textarea>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <h2>Document Uploads</h2>
+          <label>Aadhar / Voter ID (PDF only)</label>
+          <input id="aadharFile" type="file" accept="application/pdf" onchange="handleDocumentUpload('aadharFile', 'Aadhar or Voter ID', 'aadharUrl', 'aadharStatus')">
+          <div id="aadharStatus" class="file-status">No document uploaded yet.</div>
+          <input id="aadharUrl" type="hidden">
+
+          <label style="margin-top:16px;">Education Certificate (PDF only)</label>
+          <input id="certificateFile" type="file" accept="application/pdf" onchange="handleDocumentUpload('certificateFile', 'Education Certificate', 'certificateUrl', 'certificateStatus')">
+          <div id="certificateStatus" class="file-status">No document uploaded yet.</div>
+          <input id="certificateUrl" type="hidden">
+          <input id="consentUrl" type="hidden">
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <h2>Consent Form</h2>
+          <div class="file-status">Generate a printable consent form with the candidate's details and upload it after signing.</div>
+          <div class="actions" style="margin-top:14px;">
+            <button class="btn btn-primary" onclick="downloadConsentForm()">📄 Download Consent Form</button>
+              <button class="btn btn-accent" onclick="uploadConsentForm()">⬆ Upload Consent Form</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('consentFile').click()">Choose file to upload</button>
+              <input id="consentFile" type="file" accept="application/pdf" style="display:none" onchange="handleDocumentUpload('consentFile','Consent Form','consentUrl','consentStatus')">
+          </div>
+          <div id="consentStatus" class="file-status" style="margin-top:12px;">Consent form not uploaded.</div>
+        </div>
+
+        <div class="actions" style="margin-top:18px;">
+          <button class="btn btn-primary" onclick="saveCandidate()">💾 Save Candidate</button>
+          <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Caretaker Sheet Sync Settings</h3>
+      <label>Apps Script Web App URL</label>
+      <input id="scriptUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec">
+      <label style="margin-top:14px;">Google Drive Folder URL</label>
+      <input id="driveFolderInput" type="text" placeholder="https://drive.google.com/drive/folders/...">
+      <p class="field-note">Use a container-bound caretaker Apps Script deployment attached to the caretaker sheet, same pattern as the invoice app.</p>
+      <p class="field-note">Uploaded candidate PDFs will be stored in this Drive folder. File names are prefixed with the candidate's name.</p>
+      <p class="field-note">Use a separate Apps Script deployment and a separate sheet from the invoice app. This is the caretaker onboarding backend URL.</p>
+      <p class="field-note">Uploaded candidate PDFs will be stored in this Drive folder. File names are prefixed with the candidate's name.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-danger" onclick="clearSettings()">Clear</button>
+        <button class="btn btn-info" onclick="testConnection()">Test connection</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="consentPreview" class="hidden"></div>
+
+  <script>
+    let scriptUrl = '';
+    let driveFolderUrl = '';
+    let cloudCandidates = [];
+    let generatedConsentBlob = null;
+    let lastErrorLog = '';
+
+    const LS_KEYS = {
+      SCRIPT_URL: 'ek_caretaker_script_url',
+      FOLDER_URL: 'ek_caretaker_drive_folder_url',
+      CACHE: 'ek_caretaker_cache'
+    };
+
+    function loadSettings() {
+      scriptUrl = localStorage.getItem(LS_KEYS.SCRIPT_URL) || '';
+      driveFolderUrl = localStorage.getItem(LS_KEYS.FOLDER_URL) || '';
+      return { scriptUrl, driveFolderUrl };
+    }
+
+    function saveSettingsToStorage(url, folder) {
+      scriptUrl = url.trim();
+      driveFolderUrl = folder.trim();
+      if (scriptUrl) localStorage.setItem(LS_KEYS.SCRIPT_URL, scriptUrl);
+      else localStorage.removeItem(LS_KEYS.SCRIPT_URL);
+      if (driveFolderUrl) localStorage.setItem(LS_KEYS.FOLDER_URL, driveFolderUrl);
+      else localStorage.removeItem(LS_KEYS.FOLDER_URL);
+    }
+
+    function setSyncStatus(state, message) {
+      const bar = document.getElementById('syncBar');
+      const text = document.getElementById('syncText');
+      bar.classList.remove('connected', 'syncing', 'error');
+      if (state) bar.classList.add(state);
+      text.textContent = message;
+    }
+
+    function openSettings() {
+      loadSettings();
+      document.getElementById('scriptUrlInput').value = scriptUrl;
+      document.getElementById('driveFolderInput').value = driveFolderUrl;
+      document.getElementById('settingsModal').classList.add('show');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('show');
+    }
+
+    function clearSettings() {
+      if (!confirm('Clear stored connection settings?')) return;
+      saveSettingsToStorage('', '');
+      setSyncStatus(null, 'Not connected to Google Sheet');
+      closeSettings();
+    }
+
+    async function saveSettings() {
+      const url = document.getElementById('scriptUrlInput').value.trim();
+      const folder = document.getElementById('driveFolderInput').value.trim();
+      if (!url) { alert('Please enter your Apps Script URL.'); return; }
+      if (!folder) { alert('Please enter your Drive folder URL.'); return; }
+      saveSettingsToStorage(url, folder);
+      closeSettings();
+      await syncFromCloud();
+    }
+
+    async function testConnection() {
+      const url = document.getElementById('scriptUrlInput').value.trim();
+      if (!url) { alert('Please enter your Apps Script URL first.'); return; }
+      saveSettingsToStorage(url, document.getElementById('driveFolderInput').value.trim());
+      setSyncStatus('syncing', 'Testing connection...');
+      try {
+        const data = await callScript({ action: 'ping' }, 'GET');
+        const pretty = JSON.stringify(data, null, 2);
+        setLastErrorLog('Ping result:\n' + pretty);
+        setSyncStatus('connected', `Ping OK · server ${data.serverTime || ''}`);
+        alert('Connection successful. Open the error log to view details.');
+      } catch (err) {
+        setSyncStatus('error', 'Ping failed');
+        alert('Ping failed: ' + (err.message || err));
+      }
+    }
+
+    async function callScript(params, method = 'GET') {
+      if (!scriptUrl) throw new Error('No Apps Script URL configured');
+      if (!scriptUrl.startsWith('https://')) throw new Error('Apps Script URL must start with https://');
+      const requestParams = Object.assign({}, params);
+      const opts = { method: method === 'POST' ? 'POST' : 'GET', redirect: 'follow' };
+      let url = scriptUrl;
+      if (method === 'POST') {
+        opts.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+        opts.body = JSON.stringify(requestParams);
+      } else {
+        const qs = Object.keys(requestParams).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(requestParams[k])).join('&');
+        url = scriptUrl + (scriptUrl.indexOf('?') >= 0 ? '&' : '?') + qs;
+      }
+      try {
+        const res = await fetch(url, opts);
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch (jsonErr) {
+          const detail = `Request URL: ${url}\nStatus: ${res.status} ${res.statusText}\nResponse text:\n${text}`;
+          setLastErrorLog(detail);
+          throw new Error('Invalid server response. Open error log for details.');
+        }
+        if (!res.ok || !json.ok) {
+          const errorText = json && json.error ? json.error : text || res.statusText;
+          const detail = `Request URL: ${url}\nStatus: ${res.status} ${res.statusText}\nResponse JSON:\n${text}`;
+          setLastErrorLog(detail);
+          const authHint = /SpreadsheetApp\.getActiveSpreadsheet|spreadsheets\.currentonly|spreadsheets/.test(errorText)
+            ? '\n\nHint: This web app URL must be deployed from the caretaker sheet bound script and authorized for Sheets access.'
+            : '';
+          throw new Error((errorText || 'Script request failed. Open error log for details.') + authHint);
+        }
+        return json.data;
+      } catch (err) {
+        const detail = `Request URL: ${url}\nError: ${err && err.message ? err.message : String(err)}`;
+        setLastErrorLog(detail);
+        throw new Error(err && err.message ? err.message : 'Failed to fetch the Apps Script endpoint. Check the URL, deployment, and network.');
+      }
+    }
+
+    function setLastErrorLog(detail) {
+      lastErrorLog = detail || '';
+      document.getElementById('errorLogContent').textContent = lastErrorLog;
+      document.getElementById('viewErrorButton').classList.toggle('hidden', !lastErrorLog);
+      if (!lastErrorLog) {
+        document.getElementById('errorLogPanel').classList.add('hidden');
+      }
+    }
+
+    function toggleErrorLog() {
+      const panel = document.getElementById('errorLogPanel');
+      panel.classList.toggle('hidden');
+    }
+
+    function copyErrorLog() {
+      if (!lastErrorLog) return;
+      navigator.clipboard.writeText(lastErrorLog)
+        .then(() => alert('Error log copied to clipboard.'))
+        .catch(() => alert('Unable to copy error log.'));
+    }
+
+    async function syncFromCloud() {
+      loadSettings();
+      if (!scriptUrl) {
+        const cached = localStorage.getItem(LS_KEYS.CACHE);
+        cloudCandidates = cached ? JSON.parse(cached) : [];
+        setSyncStatus('offline', `Offline mode · ${cloudCandidates.length} candidates cached`);
+        return;
+      }
+      setSyncStatus('syncing', 'Syncing candidates...');
+      try {
+        const data = await callScript({ action: 'listCaretakers' }, 'GET');
+        cloudCandidates = data.candidates || [];
+        localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudCandidates));
+        setSyncStatus('connected', `Connected · ${cloudCandidates.length} candidates loaded`);
+      } catch (err) {
+        const cached = localStorage.getItem(LS_KEYS.CACHE);
+        cloudCandidates = cached ? JSON.parse(cached) : [];
+        setSyncStatus('error', `Sync failed · using cache`);
+      }
+    }
+
+    function validateCandidate() {
+      const required = [
+        { id: 'candidateName', label: 'Name' },
+        { id: 'candidateMobile', label: 'Mobile Number' }
+      ];
+      const errors = [];
+      required.forEach(field => {
+        const el = document.getElementById(field.id);
+        if (!el.value.trim()) errors.push(field.label + ' is required');
+      });
+      const mobile = document.getElementById('candidateMobile').value.trim();
+      if (mobile && !/^\d{7,15}$/.test(mobile)) errors.push('Mobile Number must contain 7–15 digits');
+      const aadhar = document.getElementById('aadharUrl').value;
+      const cert = document.getElementById('certificateUrl').value;
+      if (!aadhar) errors.push('Aadhar / Voter ID PDF must be uploaded');
+      if (!cert) errors.push('Education Certificate PDF must be uploaded');
+      if (errors.length) alert('Please fix the following:\n' + errors.join('\n'));
+      return errors.length === 0;
+    }
+
+    async function handleDocumentUpload(inputId, docType, urlFieldId, statusId) {
+      const input = document.getElementById(inputId);
+      const status = document.getElementById(statusId);
+      const file = input.files[0];
+      if (!file) return;
+      if (file.type !== 'application/pdf') {
+        alert('Only PDF files are allowed.');
+        input.value = '';
+        return;
+      }
+      const name = document.getElementById('candidateName').value.trim() || 'candidate';
+      const fileName = `${name} - ${docType}.pdf`;
+      if (!driveFolderUrl) {
+        alert('Set the Drive folder URL in Settings before uploading documents.');
+        return;
+      }
+      status.textContent = `Uploading ${docType}...`;
+      try {
+        const base64 = await readFileAsBase64(file);
+        const payload = {
+          action: 'uploadFile',
+          folderUrl: driveFolderUrl,
+          candidateName: name,
+          fileName: fileName,
+          contentBase64: base64.split(',')[1]
+        };
+        const data = await callScript(payload, 'POST');
+        document.getElementById(urlFieldId).value = data.fileUrl;
+        status.innerHTML = `<strong>${docType} uploaded</strong> · <a href="${data.fileUrl}" target="_blank">View file</a>`;
+        // After upload, attempt to save the candidate to the sheet with the new file URL.
+        try {
+          const partial = collectCandidate();
+          // ensure only uploaded fields are included to avoid overwriting unintended data
+          partial.aadharUrl = document.getElementById('aadharUrl').value || partial.aadharUrl || '';
+          partial.certificateUrl = document.getElementById('certificateUrl').value || partial.certificateUrl || '';
+          partial.driveFolderUrl = driveFolderUrl || partial.driveFolderUrl || '';
+          if (scriptUrl) {
+            await callScript({ action: 'saveCaretaker', caretaker: partial }, 'POST');
+            setSyncStatus('connected', 'Uploaded files saved to sheet');
+          } else {
+            // offline: save to cache
+            cloudCandidates = cloudCandidates.filter(c => c.candidateId !== partial.candidateId);
+            cloudCandidates.unshift(partial);
+            localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudCandidates));
+            setSyncStatus('offline', `Saved locally · ${cloudCandidates.length} cached`);
+          }
+        } catch (saveErr) {
+          // If saving fails (likely due to Sheets permission), keep the file URL locally and log the error.
+          setLastErrorLog('Save after upload failed:\n' + (saveErr && saveErr.message ? saveErr.message : String(saveErr)));
+          cloudCandidates = cloudCandidates.filter(c => c.candidateId !== (collectCandidate().candidateId));
+          cloudCandidates.unshift(collectCandidate());
+          localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudCandidates));
+          setSyncStatus('error', 'Upload saved locally (sheet save failed)');
+        }
+      } catch (err) {
+        status.textContent = `Upload failed: ${err.message}`;
+      }
+    }
+
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function generateConsentFormBlob() {
+      const html = buildConsentHtml();
+      const container = document.getElementById('consentPreview');
+      container.innerHTML = html;
+      container.classList.remove('hidden');
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+      container.classList.add('hidden');
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210 - 20;
+      const imgProps = pdf.getImageProperties(imgData);
+      const pageHeight = (imgProps.height * pageWidth) / imgProps.width;
+      pdf.addImage(imgData, 'PNG', 10, 10, pageWidth, pageHeight);
+      generatedConsentBlob = pdf.output('blob');
+      return pdf;
+    }
+
+    function buildConsentHtml() {
+      const name = escapeHtml(document.getElementById('candidateName').value.trim() || '—');
+      const mobile = escapeHtml(document.getElementById('candidateMobile').value.trim() || '—');
+      const alternate = escapeHtml(document.getElementById('candidateAlternate').value.trim() || '—');
+      const email = escapeHtml(document.getElementById('candidateEmail').value.trim() || '—');
+      const address = escapeHtml(document.getElementById('candidateAddress').value.trim() || '—');
+      const pin = escapeHtml(document.getElementById('candidatePin').value.trim() || '—');
+      const dob = escapeHtml(document.getElementById('candidateDob').value || '—');
+      const gender = escapeHtml(document.getElementById('candidateGender').value || '—');
+      const marital = escapeHtml(document.getElementById('candidateMarital').value || '—');
+      const caste = escapeHtml(document.getElementById('candidateCaste').value.trim() || '—');
+      const education = escapeHtml(document.getElementById('candidateEducation').value.trim() || '—');
+      const experience = escapeHtml(document.getElementById('candidateExperience').value.trim() || '—');
+      const emergency = escapeHtml(document.getElementById('candidateEmergency').value.trim() || '—');
+      const notes = escapeHtml(document.getElementById('candidateNotes').value.trim() || '—');
+      const aadharUrl = document.getElementById('aadharUrl').value || 'Not uploaded';
+      const certificateUrl = document.getElementById('certificateUrl').value || 'Not uploaded';
+      const date = new Date().toLocaleDateString('en-GB');
+
+      return `
+          <div style="padding:22px; font-family: Inter, system-ui, sans-serif; color:#1f2937; font-size:21px; line-height:1.6;">
+          <div style="text-align:center; margin-bottom:24px;">
+            <div style="font-size:33px; font-weight:700; color:#0369a1;">Eurokids Caretaker Consent Form</div>
+            <div style="margin-top:8px; color:#475569; font-size:20px;">Prepared for preschool caretaker onboarding</div>
+          </div>
+          <div style="font-size:21px; line-height:1.7;">
+            <p>This document confirms that the candidate listed below has provided accurate personal details, identity documentation, and educational records for onboarding as a preschool caretaker/maid.</p>
+            <h3 style="margin:16px 0 8px; color:#0f172a;">Candidate Details</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:20px;">
+              ${buildConsentRow('Name', name)}
+              ${buildConsentRow('Mobile', mobile)}
+              ${buildConsentRow('Alternate Mobile', alternate)}
+              ${buildConsentRow('Email', email)}
+              ${buildConsentRow('Date of Birth', dob)}
+              ${buildConsentRow('Gender', gender)}
+              ${buildConsentRow('Marital Status', marital)}
+              ${buildConsentRow('Caste', caste)}
+              ${buildConsentRow('Address', address)}
+              ${buildConsentRow('PIN', pin)}
+              ${buildConsentRow('Education', education)}
+              ${buildConsentRow('Experience', experience)}
+              ${buildConsentRow('Emergency Contact', emergency)}
+              ${buildConsentRow('Notes', notes)}
+            </table>
+            <h3 style="margin:20px 0 8px; color:#0f172a;">Uploaded Documents</h3>
+            <p style="margin:0 0 8px;">Aadhar/Voter ID: ${escapeHtml(aadharUrl)}</p>
+            <p style="margin:0 0 8px;">Education Certificate: ${escapeHtml(certificateUrl)}</p>
+            <h3 style="margin:20px 0 8px; color:#0f172a; font-size:23px;">Consent</h3>
+            <p>I hereby confirm that the information provided above is true and accurate to the best of my knowledge. I agree to abide by Eurokids VIP Colony's policies, maintain the safety of children, and cooperate with the preschool management while performing caretaker duties. I understand that the documents shared will be retained securely by Eurokids for onboarding and verification purposes.</p>
+            <div style="margin-top:26px; display:flex; justify-content:space-between; gap:20px; font-size:20px;">
+              <div style="flex:1;">Candidate signature:<br><br>______________________________</div>
+              <div style="flex:1;">Date:<br><br>${escapeHtml(date)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildConsentRow(label, value) {
+      return `<tr><td style="padding:6px 0; width:38%; font-weight:700; color:#1f2937;">${label}</td><td style="padding:6px 0; color:#334155;">${value}</td></tr>`;
+    }
+
+    async function downloadConsentForm() {
+      if (!document.getElementById('candidateName').value.trim()) { alert('Enter the candidate name before generating the consent form.'); return; }
+      const pdf = await generateConsentFormBlob();
+      const name = sanitizeFileName(document.getElementById('candidateName').value.trim());
+      pdf.save(`${name} - Caretaker Consent.pdf`);
+      document.getElementById('consentStatus').textContent = 'Consent form generated. Upload after signing.';
+    }
+
+    async function uploadConsentForm() {
+      // If user chose an existing file via the file chooser, upload that first
+      const consentFileInput = document.getElementById('consentFile');
+      if (consentFileInput && consentFileInput.files && consentFileInput.files.length > 0) {
+        return handleDocumentUpload('consentFile', 'Consent Form', 'consentUrl', 'consentStatus');
+      }
+      if (!generatedConsentBlob) { alert('Generate the consent form first or choose a file to upload.'); return; }
+      if (!driveFolderUrl) { alert('Drive folder URL must be set in Settings.'); return; }
+      const name = document.getElementById('candidateName').value.trim() || 'candidate';
+      document.getElementById('consentStatus').textContent = 'Uploading consent form...';
+      const base64 = await blobToBase64(generatedConsentBlob);
+      try {
+        const data = await callScript({
+          action: 'uploadFile',
+          folderUrl: driveFolderUrl,
+          candidateName: name,
+          fileName: `${name} - Consent Form.pdf`,
+          contentBase64: base64.split(',')[1]
+        }, 'POST');
+        document.getElementById('consentUrl').value = data.fileUrl;
+        document.getElementById('consentStatus').innerHTML = `<strong>Consent uploaded</strong> · <a href="${data.fileUrl}" target="_blank">View file</a>`;
+        // clear any selected file after successful upload
+        if (consentFileInput) consentFileInput.value = '';
+      } catch (err) {
+        document.getElementById('consentStatus').textContent = 'Upload failed: ' + err.message;
+      }
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function saveCandidate() {
+      if (!validateCandidate()) return;
+      const candidate = collectCandidate();
+      if (scriptUrl) {
+        setSyncStatus('syncing', 'Saving candidate...');
+        try {
+          const result = await callScript({ action: 'saveCaretaker', caretaker: candidate }, 'POST');
+          candidate.candidateId = result.candidateId;
+          cloudCandidates = cloudCandidates.filter(c => c.candidateId !== result.candidateId);
+          cloudCandidates.unshift(candidate);
+          localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudCandidates));
+          setSyncStatus('connected', `Saved · ${candidate.name}`);
+          alert('Candidate saved successfully.');
+        } catch (err) {
+          setSyncStatus('error', 'Save failed');
+          alert('Save failed: ' + err.message);
+        }
+      } else {
+        cloudCandidates = cloudCandidates.filter(c => c.candidateId !== candidate.candidateId);
+        cloudCandidates.unshift(candidate);
+        localStorage.setItem(LS_KEYS.CACHE, JSON.stringify(cloudCandidates));
+        setSyncStatus('offline', `Saved locally · ${cloudCandidates.length} cached`);
+        alert('Candidate saved locally. Connect to Google Sheet to sync.');
+      }
+      doSearch();
+    }
+
+    function collectCandidate() {
+      return {
+        candidateId: document.getElementById('candidateId')?.value || '',
+        name: document.getElementById('candidateName').value.trim(),
+        mobile: document.getElementById('candidateMobile').value.trim(),
+        alternateMobile: document.getElementById('candidateAlternate').value.trim(),
+        email: document.getElementById('candidateEmail').value.trim(),
+        dob: document.getElementById('candidateDob').value,
+        gender: document.getElementById('candidateGender').value,
+        maritalStatus: document.getElementById('candidateMarital').value,
+        caste: document.getElementById('candidateCaste').value.trim(),
+        address: document.getElementById('candidateAddress').value.trim(),
+        pin: document.getElementById('candidatePin').value.trim(),
+        education: document.getElementById('candidateEducation').value.trim(),
+        experienceYears: document.getElementById('candidateExperience').value.trim(),
+        emergencyContact: document.getElementById('candidateEmergency').value.trim(),
+        notes: document.getElementById('candidateNotes').value.trim(),
+        aadharUrl: document.getElementById('aadharUrl').value || '',
+        certificateUrl: document.getElementById('certificateUrl').value || '',
+        consentUrl: document.getElementById('consentUrl').value || '',
+        driveFolderUrl: driveFolderUrl || ''
+      };
+    }
+
+    function doSearch() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const results = query ? cloudCandidates.filter(c => {
+        return [c.name, c.mobile, c.alternateMobile, c.email, c.caste].some(val => String(val || '').toLowerCase().includes(query));
+      }) : [];
+      const container = document.getElementById('searchResults');
+      if (!query) { container.innerHTML = ''; return; }
+      if (results.length === 0) {
+        container.innerHTML = '<div class="result-card">No candidates found.</div>';
+        return;
+      }
+      container.innerHTML = results.map((c, idx) => `
+        <div class="result-item">
+          <div class="result-title">${escapeHtml(c.name || 'Unnamed')}</div>
+          <div class="result-sub">${escapeHtml(c.mobile || '')} · ${escapeHtml(c.email || '')}</div>
+          <div class="result-sub">${escapeHtml(c.address || '')}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="btn btn-primary btn-sm" data-id="${escapeHtml(c.candidateId || '')}" onclick="loadCandidate(this.dataset.id)">Load</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function loadCandidate(candidateId) {
+      const candidate = cloudCandidates.find(c => c.candidateId === candidateId);
+      if (!candidate) return;
+      document.getElementById('candidateId')?.remove();
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'candidateId';
+      hidden.value = candidate.candidateId || '';
+      document.body.appendChild(hidden);
+      document.getElementById('candidateName').value = candidate.name || '';
+      document.getElementById('candidateMobile').value = candidate.mobile || '';
+      document.getElementById('candidateAlternate').value = candidate.alternateMobile || '';
+      document.getElementById('candidateEmail').value = candidate.email || '';
+      document.getElementById('candidateDob').value = candidate.dob || '';
+      document.getElementById('candidateGender').value = candidate.gender || '';
+      document.getElementById('candidateMarital').value = candidate.maritalStatus || '';
+      document.getElementById('candidateCaste').value = candidate.caste || '';
+      document.getElementById('candidateAddress').value = candidate.address || '';
+      document.getElementById('candidatePin').value = candidate.pin || '';
+      document.getElementById('candidateEducation').value = candidate.education || '';
+      document.getElementById('candidateExperience').value = candidate.experienceYears || '';
+      document.getElementById('candidateEmergency').value = candidate.emergencyContact || '';
+      document.getElementById('candidateNotes').value = candidate.notes || '';
+      document.getElementById('aadharUrl').value = candidate.aadharUrl || '';
+      document.getElementById('certificateUrl').value = candidate.certificateUrl || '';
+      document.getElementById('consentUrl').value = candidate.consentUrl || '';
+      if (candidate.aadharUrl) document.getElementById('aadharStatus').innerHTML = `<strong>Aadhar uploaded</strong> · <a href="${candidate.aadharUrl}" target="_blank">View</a>`;
+      if (candidate.certificateUrl) document.getElementById('certificateStatus').innerHTML = `<strong>Certificate uploaded</strong> · <a href="${candidate.certificateUrl}" target="_blank">View</a>`;
+      if (candidate.consentUrl) document.getElementById('consentStatus').innerHTML = `<strong>Consent uploaded</strong> · <a href="${candidate.consentUrl}" target="_blank">View</a>`;
+      if (!candidate.aadharUrl) document.getElementById('aadharStatus').textContent = 'No document uploaded yet.';
+      if (!candidate.certificateUrl) document.getElementById('certificateStatus').textContent = 'No document uploaded yet.';
+      if (!candidate.consentUrl) document.getElementById('consentStatus').textContent = 'Consent form not uploaded.';
+      if (candidate.consentUrl) generatedConsentBlob = null;
+    }
+
+    function resetForm() {
+      if (!confirm('Start a new candidate entry? Unsaved changes will be lost.')) return;
+      document.querySelectorAll('input[type=text], input[type=email], input[type=number], input[type=date], textarea').forEach(el => el.value = '');
+      document.querySelectorAll('select').forEach(el => el.value = '');
+      document.querySelectorAll('input[type=file], input[type=hidden]').forEach(el => el.value = '');
+      document.getElementById('aadharStatus').textContent = 'No document uploaded yet.';
+      document.getElementById('certificateStatus').textContent = 'No document uploaded yet.';
+      document.getElementById('consentStatus').textContent = 'Consent form not uploaded.';
+      generatedConsentBlob = null;
+      document.getElementById('candidateId')?.remove();
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'": '&#39;'}[c] || c; });
+    }
+
+    function sanitizeFileName(name) {
+      return String(name || 'file').replace(/[\\/:*?"<>|]/g, '').trim();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadSettings();
+      document.getElementById('scriptUrlInput').value = scriptUrl;
+      document.getElementById('driveFolderInput').value = driveFolderUrl;
+      await syncFromCloud();
+    });
+  </script>
+</body>
+</html>
