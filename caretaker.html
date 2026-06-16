@@ -562,15 +562,15 @@
       const date = new Date().toLocaleDateString('en-GB');
 
       return `
-          <div style="padding:22px; font-family: Inter, system-ui, sans-serif; color:#1f2937; font-size:21px; line-height:1.6;">
+          <div style="padding:22px; font-family: Inter, system-ui, sans-serif; color:#1f2937; font-size:26px; line-height:1.6;">
           <div style="text-align:center; margin-bottom:24px;">
-            <div style="font-size:33px; font-weight:700; color:#0369a1;">Eurokids Caretaker Consent Form</div>
-            <div style="margin-top:8px; color:#475569; font-size:20px;">Prepared for preschool caretaker onboarding</div>
+            <div style="font-size:40px; font-weight:700; color:#0369a1;">Eurokids Caretaker Consent Form</div>
+            <div style="margin-top:10px; color:#475569; font-size:25px;">Prepared for preschool caretaker onboarding</div>
           </div>
-          <div style="font-size:21px; line-height:1.7;">
+          <div style="font-size:26px; line-height:1.7;">
             <p>This document confirms that the candidate listed below has provided accurate personal details, identity documentation, and educational records for onboarding as a preschool caretaker/maid.</p>
-            <h3 style="margin:16px 0 8px; color:#0f172a;">Candidate Details</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:20px;">
+            <h3 style="margin:18px 0 10px; color:#0f172a; font-size:28px;">Candidate Details</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:25px;">
               ${buildConsentRow('Name', name)}
               ${buildConsentRow('Mobile', mobile)}
               ${buildConsentRow('Alternate Mobile', alternate)}
@@ -586,14 +586,14 @@
               ${buildConsentRow('Emergency Contact', emergency)}
               ${buildConsentRow('Notes', notes)}
             </table>
-            <h3 style="margin:20px 0 8px; color:#0f172a;">Uploaded Documents</h3>
-            <p style="margin:0 0 8px;">Aadhar/Voter ID: ${escapeHtml(aadharUrl)}</p>
-            <p style="margin:0 0 8px;">Education Certificate: ${escapeHtml(certificateUrl)}</p>
-            <h3 style="margin:20px 0 8px; color:#0f172a; font-size:23px;">Consent</h3>
-            <p>I hereby confirm that the information provided above is true and accurate to the best of my knowledge. I agree to abide by Eurokids VIP Colony's policies, maintain the safety of children, and cooperate with the preschool management while performing caretaker duties. I understand that the documents shared will be retained securely by Eurokids for onboarding and verification purposes.</p>
-            <div style="margin-top:26px; display:flex; justify-content:space-between; gap:20px; font-size:20px;">
-              <div style="flex:1;">Candidate signature:<br><br>______________________________</div>
-              <div style="flex:1;">Date:<br><br>${escapeHtml(date)}</div>
+            <h3 style="margin:22px 0 10px; color:#0f172a; font-size:28px;">Uploaded Documents</h3>
+            <p style="margin:0 0 10px;">Aadhar/Voter ID: ${escapeHtml(aadharUrl)}</p>
+            <p style="margin:0 0 10px;">Education Certificate: ${escapeHtml(certificateUrl)}</p>
+            <h3 style="margin:22px 0 10px; color:#0f172a; font-size:28px;">Consent</h3>
+            <p style="margin-bottom:0;">I hereby confirm that the information provided above is true and accurate to the best of my knowledge. I agree to abide by Eurokids VIP Colony's policies, maintain the safety of children, and cooperate with the preschool management while performing caretaker duties. I understand that the documents shared will be retained securely by Eurokids for onboarding and verification purposes.</p>
+            <div style="margin-top:34px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:24px; font-size:25px;">
+              <div style="flex:1; min-width:260px;">Candidate signature:<br><br>______________________________</div>
+              <div style="flex:1; min-width:260px;">Date:<br><br>${escapeHtml(date)}</div>
             </div>
           </div>
         </div>
@@ -601,7 +601,7 @@
     }
 
     function buildConsentRow(label, value) {
-      return `<tr><td style="padding:6px 0; width:38%; font-weight:700; color:#1f2937;">${label}</td><td style="padding:6px 0; color:#334155;">${value}</td></tr>`;
+      return `<tr><td style="padding:8px 0; width:38%; font-size:25px; font-weight:700; color:#1f2937;">${label}</td><td style="padding:8px 0; font-size:25px; color:#334155;">${value}</td></tr>`;
     }
 
     async function downloadConsentForm() {

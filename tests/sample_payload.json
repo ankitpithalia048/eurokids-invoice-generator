@@ -1,0 +1,17 @@
+{
+  "invoice": {
+    "invNumber": "TEST-12345",
+    "date": "2026-06-15",
+    "program": "training",
+    "student": "E2E Tester",
+    "candidateAge": "25",
+    "contact": "9876543210",
+    "fees": [
+      { "label": "Course Fee", "amount": 1000 }
+    ],
+    "payments": [
+      { "date": "2026-06-15", "amount": 1000, "mode": "Cash", "ref": "tx01" }
+    ],
+    "academicYear": "2026-2027"
+  }
+}
