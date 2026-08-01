@@ -171,6 +171,15 @@ The project now includes a dedicated `apps-script` folder with separate Apps Scr
 
 If you deploy to Google Apps Script, copy the contents of these files into the script editor as separate `.gs` files.
 
+### Multiple branches (VIP Colony, Tagore Nagar, ...)
+
+- `invoice.html` — VIP Colony invoice app
+- `tagore-nagar/index.html` — Tagore Nagar invoice app (own fee structure, own letterhead footer/address, own Apps Script URL)
+- Both pages share the same engine (`js/invoice-app.js`) and styling (`css/invoice-app.css`), driven by a small `APP_CONFIG` object declared inline in each HTML page (branding text, footer contact/address, fee programs, invoice number prefix, and the `localStorage` key used to store that branch's Apps Script URL). **Editing `js/invoice-app.js` or `css/invoice-app.css` changes behavior/styling for every branch at once** — e.g. adding a new button or tweaking the PDF layout only needs to happen in one place.
+- Each branch still needs its own Google Sheet + Apps Script deployment (`tagore-nagar/code.gs` for Tagore Nagar) and its own Apps Script URL pasted into that branch's Settings modal — the URL is stored under a branch-specific `localStorage` key so the two apps never overwrite each other's connection, even though they're served from the same site.
+- To add another branch: copy `tagore-nagar/index.html` to `<branch>/index.html`, adjust the `APP_CONFIG` block (and relative `../` paths), and copy `tagore-nagar/code.gs` to `<branch>/code.gs` for its own sheet deployment.
+- Each branch can use its own letterhead logo: `LOGO_BASE64` is declared in a small `logo-base64.js` file loaded before `invoice-app.js`. VIP Colony uses the shared `js/logo-base64.js`; Tagore Nagar uses its own `tagore-nagar/logo-base64.js`. To change a branch's logo, replace its image file and regenerate that branch's `logo-base64.js` (base64-encode the image into `const LOGO_BASE64 = 'data:image/<type>;base64,<...>';`).
+
 If everything's right, the sync bar turns green: **"Connected · 0 invoices in sheet (2026-2027)"**. Done.
 
 > The URL is saved in your browser's local storage. Each device you use needs this done once. If you clear browser data, re-enter it from Settings.

@@ -6,7 +6,7 @@ var SHEET_PREFIX_PAYMENT = 'Payments_';
 
 var INVOICE_COLS = [
   'invNumber', 'customInvNo', 'date', 'academicYear',
-  'student', 'parent', 'contact', 'program',
+  'student', 'parent', 'contact', 'email', 'program',
   'gstEnabled', 'gstNumber', 'gstName',
   'fees_json',
   'transport_enabled', 'transport_desc', 'transport_amount', 'transport_period',
@@ -21,6 +21,7 @@ var PAYMENT_COLS = [
 ];
 
 function doGet(e) {
+  Logger.log('doGet params: ' + JSON.stringify(e && e.parameter));
   return handleRequest(e, e.parameter);
 }
 
@@ -31,11 +32,13 @@ function doPost(e) {
       params = JSON.parse(e.postData.contents);
     }
   } catch (err) {
+    Logger.log('doPost JSON parse failed: ' + (err && err.stack || err));
     params = {};
   }
   Object.keys(e.parameter || {}).forEach(function(k) {
     if (!params[k]) params[k] = e.parameter[k];
   });
+  Logger.log('doPost action=' + params.action + ' keys=' + JSON.stringify(Object.keys(params)));
   return handleRequest(e, params);
 }
 
@@ -51,9 +54,13 @@ function handleRequest(e, params) {
       case 'nextNumber': result = getNextInvoiceNumber(params.ay); break;
       default:           result = { error: 'Unknown action: ' + action };
     }
+    Logger.log('OK action=' + action);
     return jsonResponse({ ok: true, data: result });
   } catch (err) {
-    return jsonResponse({ ok: false, error: String(err && err.message || err) });
+    var detail = String(err && err.message || err);
+    var stack = err && err.stack ? String(err.stack) : '';
+    Logger.log('ERROR action=' + action + ' : ' + detail + (stack ? '\n' + stack : ''));
+    return jsonResponse({ ok: false, error: detail + (stack ? ' | ' + stack.split('\n').slice(0, 3).join(' » ') : '') });
   }
 }
 
@@ -133,6 +140,7 @@ function listAcademicYears() {
 
 function listInvoices(ay) {
   ay = sanitizeAY(ay);
+  Logger.log('listInvoices ay=' + ay);
   var invSheet = getOrCreateInvoiceSheet(ay);
   var paySheet = getOrCreatePaymentSheet(ay);
 
@@ -147,6 +155,7 @@ function listInvoices(ay) {
       student: row.student,
       parent: row.parent,
       contact: row.contact,
+      email: row.email,
       program: row.program,
       gstEnabled: row.gstEnabled === true || row.gstEnabled === 'TRUE',
       gstNumber: row.gstNumber,
@@ -192,6 +201,7 @@ function listInvoices(ay) {
 }
 
 function saveInvoice(inv) {
+  Logger.log('saveInvoice called for invNumber=' + (inv && inv.invNumber) + ' ay=' + (inv && inv.academicYear));
   if (!inv || !inv.invNumber) throw new Error('Invoice number is required');
   if (!inv.academicYear) throw new Error('Academic year is required');
 
@@ -200,6 +210,7 @@ function saveInvoice(inv) {
   var paySheet = getOrCreatePaymentSheet(ay);
   var now = new Date();
   var existingRow = findInvoiceRow(invSheet, inv.invNumber);
+  Logger.log('saveInvoice existingRow=' + existingRow + ' sheet=' + invSheet.getName());
 
   var rowValues = INVOICE_COLS.map(function(col) {
     switch (col) {

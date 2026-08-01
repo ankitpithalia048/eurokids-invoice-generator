@@ -1,24 +1,28 @@
 /**
- * Tagore Nagar Receipt backend for Google Apps Script.
- *
- * Save this file in a container-bound Apps Script project attached to a Google Sheet.
- * Deploy as a Web App with access set to Anyone.
+ * Eurokids Tagore Nagar invoice backend.
  */
+var SHEET_PREFIX_INVOICE = 'Invoices_';
+var SHEET_PREFIX_PAYMENT = 'Payments_';
 
-var RECEIPT_SHEET_NAME = 'Receipts';
-var RECEIPT_COLS = [
-  'receiptId', 'receiptType', 'receiptNumber', 'date',
-  'name', 'firmName', 'firmRegId', 'studentClass', 'parentName', 'candidateAge', 'program', 'academicYear',
-  'contact',
-  'gstEnabled', 'gstNumber', 'gstName', 'fees_json',
-  'payments_json', 'paymentReceipt',
-  'transport_json', 'daycare_json',
-  'discount', 'discountReason', 'paid', 'balance',
-  'footer', 'customInvNo', 'savedAt', 'updatedAt'
+var INVOICE_COLS = [
+  'invNumber', 'customInvNo', 'date', 'academicYear',
+  'student', 'parent', 'contact', 'email', 'program',
+  'gstEnabled', 'gstNumber', 'gstName',
+  'fees_json',
+  'transport_enabled', 'transport_desc', 'transport_amount', 'transport_period',
+  'daycare_enabled', 'daycare_amount', 'daycare_period',
+  'discount', 'discountReason',
+  'total', 'paid', 'balance',
+  'savedAt', 'updatedAt'
+];
+
+var PAYMENT_COLS = [
+  'invNumber', 'paymentIdx', 'date', 'amount', 'mode', 'ref', 'updatedAt'
 ];
 
 function doGet(e) {
-  return handleRequest(e.parameter || {});
+  Logger.log('doGet params: ' + JSON.stringify(e && e.parameter));
+  return handleRequest(e, e.parameter);
 }
 
 function doPost(e) {
@@ -28,77 +32,47 @@ function doPost(e) {
       params = JSON.parse(e.postData.contents);
     }
   } catch (err) {
+    Logger.log('doPost JSON parse failed: ' + (err && err.stack || err));
     params = {};
   }
-  Object.keys(e.parameter || {}).forEach(function(key) {
-    if (!params[key]) params[key] = e.parameter[key];
+  Object.keys(e.parameter || {}).forEach(function(k) {
+    if (!params[k]) params[k] = e.parameter[k];
   });
-  return handleRequest(params);
+  Logger.log('doPost action=' + params.action + ' keys=' + JSON.stringify(Object.keys(params)));
+  return handleRequest(e, params);
 }
 
-function handleRequest(params) {
+function handleRequest(e, params) {
   var action = params.action || 'list';
   try {
     var result;
     switch (action) {
-      case 'list': result = listReceipts(params || {}); break;
-      case 'save': result = saveReceipt(params.invoice || params.receipt || params); break;
-      case 'delete': result = deleteReceipt(params.receiptId || params.receiptNumber || params.invNumber || params.invNo); break;
-      case 'nextNumber': result = { nextInvoiceNumber: getNextReceiptNumber() }; break;
-      default: result = { error: 'Unknown action: ' + action };
+      case 'list':       result = listInvoices(params.ay); break;
+      case 'listAY':     result = listAcademicYears(); break;
+      case 'save':       result = saveInvoice(params.invoice || params); break;
+      case 'delete':     result = deleteInvoice(params.invNumber, params.ay); break;
+      case 'nextNumber': result = getNextInvoiceNumber(params.ay); break;
+      default:           result = { error: 'Unknown action: ' + action };
     }
+    Logger.log('OK action=' + action);
     return jsonResponse({ ok: true, data: result });
   } catch (err) {
-    return jsonResponse({ ok: false, error: String(err && err.message || err) });
+    var detail = String(err && err.message || err);
+    var stack = err && err.stack ? String(err.stack) : '';
+    Logger.log('ERROR action=' + action + ' : ' + detail + (stack ? '\n' + stack : ''));
+    // Include the stack (truncated) in the response so it shows up directly
+    // in the app's alert() popup - no need to open Apps Script > Executions.
+    return jsonResponse({ ok: false, error: detail + (stack ? ' | ' + stack.split('\n').slice(0, 3).join(' » ') : '') });
   }
 }
 
 function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getSpreadsheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-    throw new Error('This app must be attached to a Google Sheet.');
-  }
-  return ss;
-}
-
-function ensureReceiptSheetHeaders(sheet) {
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var missing = RECEIPT_COLS.filter(function(col) { return headers.indexOf(col) < 0; });
-  if (missing.length > 0) {
-    var newHeaders = headers.slice();
-    missing.forEach(function(col) { newHeaders.push(col); });
-    sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
-  }
-}
-
-function getOrCreateReceiptSheet() {
-  var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName(RECEIPT_SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(RECEIPT_SHEET_NAME);
-    sheet.appendRow(RECEIPT_COLS);
-    sheet.getRange(1, 1, 1, RECEIPT_COLS.length)
-      .setFontWeight('bold')
-      .setBackground('#1e3a8a')
-      .setFontColor('#ffffff');
-    sheet.setFrozenRows(1);
-  } else {
-    ensureReceiptSheetHeaders(sheet);
-  }
-  return sheet;
-}
-
-function getHeaderPositions(sheet) {
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var positions = {};
-  for (var i = 0; i < headers.length; i++) {
-    if (headers[i]) positions[headers[i]] = i + 1;
-  }
-  return { positions: positions, count: headers.length };
+  return SpreadsheetApp.getActiveSpreadsheet();
 }
 
 function readSheetAsObjects(sheet) {
@@ -107,308 +81,247 @@ function readSheetAsObjects(sheet) {
   var headers = data[0];
   var rows = [];
   for (var i = 1; i < data.length; i++) {
-    var row = {};
+    var obj = {};
     for (var j = 0; j < headers.length; j++) {
-      row[headers[j]] = data[i][j];
+      obj[headers[j]] = data[i][j];
     }
-    rows.push(row);
+    rows.push(obj);
   }
   return rows;
 }
 
-function safeNumber(value) {
-  var n = Number(value);
-  return isFinite(n) ? n : 0;
+function sanitizeAY(ay) {
+  if (!ay) throw new Error('Academic year is required');
+  var clean = String(ay).replace(/[^0-9\-]/g, '');
+  if (!/^\d{4}-\d{4}$/.test(clean)) throw new Error('Academic year must look like 2026-2027');
+  return clean;
 }
 
-function isLikelyPhone(val) {
-  if (val == null) return false;
-  var s = String(val).replace(/[^0-9]/g, '');
-  return s.length >= 7 && s.length <= 15;
-}
-
-function extractAgeFromRow(row) {
-  // Look for a plausible age (1-99) in several columns that may have been mis-shifted
-  var candidates = ['candidateAge', 'studentClass', 'firmRegId', 'gstNumber', 'paymentReceipt', 'savedAt', 'updatedAt', 'name'];
-  for (var i = 0; i < candidates.length; i++) {
-    var k = candidates[i];
-    var v = row[k];
-    if (v == null) continue;
-    var txt = String(v);
-    // Search for standalone numbers between 1 and 99
-    var m = txt.match(/\b(\d{1,2})\b/);
-    if (m) {
-      var n = Number(m[1]);
-      if (n >= 1 && n <= 99) return String(n);
-    }
+function getOrCreateInvoiceSheet(ay) {
+  var ss = getSpreadsheet();
+  var name = SHEET_PREFIX_INVOICE + sanitizeAY(ay);
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(INVOICE_COLS);
+    sheet.getRange(1, 1, 1, INVOICE_COLS.length)
+      .setFontWeight('bold')
+      .setBackground('#0369a1')
+      .setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
   }
-  return '';
+  return sheet;
 }
 
-function listReceipts(params) {
-  params = params || {};
-  var filterAY = params.ay || params.academicYear || null;
-  var sheet = getOrCreateReceiptSheet();
-  var receipts = readSheetAsObjects(sheet).map(function(row) {
-    var fees = [];
-    try { 
-      var parsed = JSON.parse(row.fees_json || '[]');
-      fees = Array.isArray(parsed) ? parsed : [];
-    } catch (e) { fees = []; }
-    var payments = [];
-    try { 
-      var parsed = JSON.parse(row.payments_json || '[]');
-      payments = Array.isArray(parsed) ? parsed : [];
-    } catch (e) { payments = []; }
-    if (payments.length === 0 && row.paymentReceipt) {
-      try {
-        var parsed = JSON.parse(row.paymentReceipt || '[]');
-        payments = Array.isArray(parsed) ? parsed : payments;
-      } catch (e) {
-        // ignore
-      }
-    }
-    var transport = {};
-    try { 
-      var parsed = JSON.parse(row.transport_json || '{}');
-      transport = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
-    } catch (e) { transport = {}; }
-    if ((!transport || Object.keys(transport).length === 0) && typeof row.savedAt === 'string') {
-      try {
-        var parsed = JSON.parse(row.savedAt || '{}');
-        transport = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : transport;
-      } catch (e) {
-        // ignore
-      }
-    }
-    var daycare = {};
-    try { 
-      var parsed = JSON.parse(row.daycare_json || '{}');
-      daycare = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
-    } catch (e) { daycare = {}; }
-    if ((!daycare || Object.keys(daycare).length === 0) && typeof row.updatedAt === 'string') {
-      try {
-        var parsed = JSON.parse(row.updatedAt || '{}');
-        daycare = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : daycare;
-      } catch (e) {
-        // ignore
-      }
-    }
-    var subtotal = fees.reduce(function(s, it){ return s + Number(it.amount || 0); }, 0);
-    var discount = safeNumber(row.discount);
-    var total = Math.max(0, subtotal - discount);
-    var program = row.program;
-    if (typeof program !== 'string') {
-      program = String(row.receiptType || '').toLowerCase() === 'training' ? 'training' : 'student';
-    }
-    var academicYear = String(row.academicYear || '').trim();
-    if (!/^[0-9]{4}-[0-9]{4}$/.test(academicYear) && typeof row.gstNumber === 'string') {
-      var candidateYear = row.gstNumber.trim();
-      if (/^[0-9]{4}-[0-9]{4}$/.test(candidateYear)) {
-        academicYear = candidateYear;
-      }
-    }
-    // Normalize candidate age and contact with fallbacks to recover from malformed rows
-    var candidateAgeVal = (row.candidateAge || '').toString().trim();
-    if (!candidateAgeVal) candidateAgeVal = extractAgeFromRow(row);
-    var contactVal = '';
-    var contactCandidates = ['contact', 'firmRegId', 'gstNumber', 'paymentReceipt', 'savedAt', 'updatedAt', 'parentName'];
-    for (var ci = 0; ci < contactCandidates.length; ci++) {
-      var key = contactCandidates[ci];
-      var v = row[key];
-      if (v == null) continue;
-      if (isLikelyPhone(v)) { contactVal = String(v).replace(/[^0-9]/g, ''); break; }
-    }
+function getOrCreatePaymentSheet(ay) {
+  var ss = getSpreadsheet();
+  var name = SHEET_PREFIX_PAYMENT + sanitizeAY(ay);
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(PAYMENT_COLS);
+    sheet.getRange(1, 1, 1, PAYMENT_COLS.length)
+      .setFontWeight('bold')
+      .setBackground('#ea580c')
+      .setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
 
+function listAcademicYears() {
+  var ss = getSpreadsheet();
+  var years = ss.getSheets()
+    .map(function(sheet) { return sheet.getName(); })
+    .filter(function(name) { return name.indexOf(SHEET_PREFIX_INVOICE) === 0; })
+    .map(function(name) { return name.substring(SHEET_PREFIX_INVOICE.length); })
+    .sort()
+    .reverse();
+  return { academicYears: years };
+}
+
+function listInvoices(ay) {
+  ay = sanitizeAY(ay);
+  Logger.log('listInvoices ay=' + ay);
+  var invSheet = getOrCreateInvoiceSheet(ay);
+  var paySheet = getOrCreatePaymentSheet(ay);
+
+  var invoices = readSheetAsObjects(invSheet).map(function(row) {
+    var fees = [];
+    try { fees = JSON.parse(row.fees_json || '[]'); } catch (e) { fees = []; }
     return {
-      receiptId: row.receiptId,
-      receiptType: row.receiptType,
-      receiptNumber: row.receiptNumber,
-      invNumber: row.receiptNumber,
-      date: row.date,
-      name: row.name,
-      student: row.name,
-      firmName: row.firmName,
-      firmRegId: row.firmRegId,
-      candidateAge: candidateAgeVal || '',
-      contact: contactVal || '',
-      parent: row.parentName,
-      studentClass: row.studentClass,
-      parentName: row.parentName,
-      program: program,
-      academicYear: academicYear,
+      invNumber: row.invNumber,
+      customInvNo: row.customInvNo === true || row.customInvNo === 'TRUE',
+      date: formatDate(row.date),
+      academicYear: row.academicYear,
+      student: row.student,
+      parent: row.parent,
+      contact: row.contact,
+      email: row.email,
+      program: row.program,
       gstEnabled: row.gstEnabled === true || row.gstEnabled === 'TRUE',
       gstNumber: row.gstNumber,
-      gstName: row.gstName || '',
+      gstName: row.gstName,
       fees: fees,
-      payments: payments,
-      transport: transport,
-      daycare: daycare,
-      subtotal: subtotal,
-      discount: discount,
-      total: total,
-      paid: safeNumber(row.paid),
-      balance: safeNumber(row.balance),
-      paymentReceipt: row.paymentReceipt,
-      footer: row.footer,
-      customInvNo: row.customInvNo === true || String(row.customInvNo).toLowerCase() === 'true',
+      transport: {
+        enabled: row.transport_enabled === true || row.transport_enabled === 'TRUE',
+        desc: row.transport_desc,
+        amount: row.transport_amount,
+        period: row.transport_period
+      },
+      daycare: {
+        enabled: row.daycare_enabled === true || row.daycare_enabled === 'TRUE',
+        amount: row.daycare_amount,
+        period: row.daycare_period
+      },
+      discount: row.discount,
+      discountReason: row.discountReason,
+      total: row.total,
+      paid: row.paid,
+      balance: row.balance,
       savedAt: row.savedAt,
-      updatedAt: row.updatedAt
+      updatedAt: row.updatedAt,
+      payments: []
     };
   });
-  // Optionally filter by academic year
-  if (filterAY) {
-    // Keep rows that either match the requested academic year or have no academicYear set
-    receipts = receipts.filter(function(r){
-      var ay = String(r.academicYear || '').trim();
-      return ay === '' || ay === String(filterAY);
-    });
-  }
-  return { invoices: receipts, count: receipts.length };
-}
 
-function saveReceipt(receipt) {
-  receipt = receipt || {};
-  if (receipt.invoice) receipt = receipt.invoice;
-  if (receipt.receipt) receipt = receipt.receipt;
-  receipt.name = receipt.name || receipt.student || receipt.firmName || '';
-  receipt.parentName = receipt.parentName || receipt.parent || '';
-  receipt.firmName = receipt.firmName || receipt.firm || '';
-  receipt.firmRegId = receipt.firmRegId || receipt.registrationId || receipt.regId || receipt.registrationNo || '';
-  receipt.receiptType = receipt.receiptType || (receipt.program === 'training' ? 'training' : 'student');
-  if (!receipt.receiptType) throw new Error('Receipt type is required.');
-  if (!receipt.name) throw new Error('Name is required.');
-  if (!receipt.program) throw new Error('Program is required.');
-  if (!Array.isArray(receipt.fees) || !receipt.fees.length) throw new Error('At least one fee component is required.');
-  // The current invoice app does not require student class or teacher receipt fields.
-  receipt.receiptType = receipt.receiptType || (receipt.program === 'training' ? 'training' : 'student');
-
-  var now = new Date();
-  var sheet = getOrCreateReceiptSheet();
-  // Normalize common aliases
-  receipt.receiptNumber = receipt.receiptNumber || receipt.invNumber || receipt.invNo || receipt.inv || receipt.number || '';
-  receipt.academicYear = receipt.academicYear || receipt.ay || '';
-  var rowIndex = findReceiptRow(sheet, receipt.receiptId, receipt.receiptNumber);
-  var receiptId = receipt.receiptId || Utilities.getUuid();
-  
-  // Validate and normalize arrays/objects
-  var fees = Array.isArray(receipt.fees) ? receipt.fees : [];
-  var payments = Array.isArray(receipt.payments) ? receipt.payments : [];
-  var transport = (receipt.transport && typeof receipt.transport === 'object' && !Array.isArray(receipt.transport)) ? receipt.transport : {};
-  var daycare = (receipt.daycare && typeof receipt.daycare === 'object' && !Array.isArray(receipt.daycare)) ? receipt.daycare : {};
-  
-  var feeJson = JSON.stringify(fees);
-  var paymentsJson = JSON.stringify(payments);
-  var transportJson = JSON.stringify(transport);
-  var daycareJson = JSON.stringify(daycare);
-  var subtotal = fees.reduce(function(sum, item) {
-    return sum + Number(item.amount || 0);
-  }, 0);
-  var discount = Number(receipt.discount || 0);
-  var total = Math.max(0, subtotal - discount);
-  var paid = Number(receipt.paid || (payments.length > 0 ? payments.reduce(function(sum, item) { return sum + Number(item.amount || 0); }, 0) : 0));
-  var balance = Math.max(0, total - paid);
-
-  function safeNum(v){ var n = Number(v); return (isFinite(n) ? n : 0); }
-  ensureReceiptSheetHeaders(sheet);
-  var headerInfo = getHeaderPositions(sheet);
-  var rowValues = new Array(headerInfo.count);
-  for (var i = 0; i < rowValues.length; i++) {
-    rowValues[i] = '';
-  }
-  RECEIPT_COLS.forEach(function(col) {
-    var idx = headerInfo.positions[col];
-    if (!idx) return;
-    switch (col) {
-      case 'receiptId': rowValues[idx - 1] = receiptId; break;
-      case 'receiptType': rowValues[idx - 1] = receipt.receiptType; break;
-      case 'receiptNumber': rowValues[idx - 1] = receipt.receiptNumber || ''; break;
-      case 'date': rowValues[idx - 1] = receipt.date || Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd'); break;
-      case 'name': rowValues[idx - 1] = receipt.name; break;
-      case 'contact': rowValues[idx - 1] = receipt.contact || ''; break;
-      case 'firmName': rowValues[idx - 1] = receipt.firmName || ''; break;
-      case 'firmRegId': rowValues[idx - 1] = receipt.firmRegId || ''; break;
-      case 'studentClass': rowValues[idx - 1] = receipt.studentClass || ''; break;
-      case 'parentName': rowValues[idx - 1] = receipt.parentName || ''; break;
-      case 'candidateAge': rowValues[idx - 1] = receipt.candidateAge || ''; break;
-      case 'program': rowValues[idx - 1] = receipt.program; break;
-      case 'academicYear': rowValues[idx - 1] = receipt.academicYear || ''; break;
-      case 'gstEnabled': rowValues[idx - 1] = receipt.gstEnabled ? 'TRUE' : 'FALSE'; break;
-      case 'gstNumber': rowValues[idx - 1] = receipt.gstNumber || ''; break;
-      case 'gstName': rowValues[idx - 1] = receipt.gstName || ''; break;
-      case 'fees_json': rowValues[idx - 1] = feeJson; break;
-      case 'payments_json': rowValues[idx - 1] = paymentsJson; break;
-      case 'paymentReceipt': rowValues[idx - 1] = receipt.paymentReceipt || ''; break;
-      case 'transport_json': rowValues[idx - 1] = transportJson; break;
-      case 'daycare_json': rowValues[idx - 1] = daycareJson; break;
-      case 'discount': rowValues[idx - 1] = discount; break;
-      case 'discountReason': rowValues[idx - 1] = receipt.discountReason || ''; break;
-      case 'paid': rowValues[idx - 1] = safeNum(paid); break;
-      case 'balance': rowValues[idx - 1] = safeNum(balance); break;
-      case 'footer': rowValues[idx - 1] = receipt.footer || ''; break;
-      case 'customInvNo': rowValues[idx - 1] = receipt.customInvNo ? 'TRUE' : 'FALSE'; break;
-      case 'savedAt': rowValues[idx - 1] = receipt.savedAt || Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'); break;
-      case 'updatedAt': rowValues[idx - 1] = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'); break;
-      default: rowValues[idx - 1] = ''; break;
+  var payments = readSheetAsObjects(paySheet);
+  var byInv = {};
+  invoices.forEach(function(inv) { byInv[inv.invNumber] = inv; });
+  payments.forEach(function(p) {
+    if (byInv[p.invNumber]) {
+      byInv[p.invNumber].payments.push({
+        date: formatDate(p.date),
+        amount: p.amount,
+        mode: p.mode,
+        ref: p.ref
+      });
     }
   });
 
-  if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
-  } else {
-    sheet.appendRow(rowValues);
-  }
-
-  return { receiptId: receiptId, receiptNumber: receipt.receiptNumber || '', action: rowIndex > 0 ? 'updated' : 'created' };
+  return { invoices: invoices, count: invoices.length };
 }
 
-function deleteReceipt(receiptIdOrNumber) {
-  if (!receiptIdOrNumber) throw new Error('receiptId or receiptNumber is required for delete.');
-  var sheet = getOrCreateReceiptSheet();
-  var data = sheet.getDataRange().getValues();
-  if (data.length < 2) return { deleted: 0 };
-  var headers = data[0];
-  var idCol = headers.indexOf('receiptId');
-  var numberCol = headers.indexOf('receiptNumber');
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idCol]) === String(receiptIdOrNumber) || String(data[i][numberCol]) === String(receiptIdOrNumber)) {
-      sheet.deleteRow(i + 1);
-      return { deleted: 1 };
+function saveInvoice(inv) {
+  Logger.log('saveInvoice called for invNumber=' + (inv && inv.invNumber) + ' ay=' + (inv && inv.academicYear));
+  if (!inv || !inv.invNumber) throw new Error('Invoice number is required');
+  if (!inv.academicYear) throw new Error('Academic year is required');
+
+  var ay = sanitizeAY(inv.academicYear);
+  var invSheet = getOrCreateInvoiceSheet(ay);
+  var paySheet = getOrCreatePaymentSheet(ay);
+  var now = new Date();
+  var existingRow = findInvoiceRow(invSheet, inv.invNumber);
+  Logger.log('saveInvoice existingRow=' + existingRow + ' sheet=' + invSheet.getName());
+
+  var rowValues = INVOICE_COLS.map(function(col) {
+    switch (col) {
+      case 'fees_json': return JSON.stringify(inv.fees || []);
+      case 'transport_enabled': return !!(inv.transport && inv.transport.enabled);
+      case 'transport_desc':    return inv.transport ? (inv.transport.desc || '') : '';
+      case 'transport_amount':  return inv.transport ? (parseFloat(inv.transport.amount) || 0) : 0;
+      case 'transport_period':  return inv.transport ? (inv.transport.period || '') : '';
+      case 'daycare_enabled':   return !!(inv.daycare && inv.daycare.enabled);
+      case 'daycare_amount':    return inv.daycare ? (parseFloat(inv.daycare.amount) || 0) : 0;
+      case 'daycare_period':    return inv.daycare ? (inv.daycare.period || '') : '';
+      case 'gstEnabled':        return !!inv.gstEnabled;
+      case 'customInvNo':       return !!inv.customInvNo;
+      case 'discount':          return parseFloat(inv.discount) || 0;
+      case 'savedAt':           return inv.savedAt || now.toISOString();
+      case 'updatedAt':         return now.toISOString();
+      default:                  return inv[col] != null ? inv[col] : '';
     }
+  });
+
+  if (existingRow > 0) {
+    invSheet.getRange(existingRow, 1, 1, INVOICE_COLS.length).setValues([rowValues]);
+  } else {
+    invSheet.appendRow(rowValues);
   }
-  return { deleted: 0 };
+
+  removePaymentsForInvoice(paySheet, inv.invNumber);
+  var payments = inv.payments || [];
+  if (payments.length > 0) {
+    var payRows = payments.map(function(p, idx) {
+      return PAYMENT_COLS.map(function(col) {
+        switch (col) {
+          case 'invNumber':  return inv.invNumber;
+          case 'paymentIdx': return idx + 1;
+          case 'amount':     return parseFloat(p.amount) || 0;
+          case 'updatedAt':  return now.toISOString();
+          default:           return p[col] != null ? p[col] : '';
+        }
+      });
+    });
+    paySheet.getRange(paySheet.getLastRow() + 1, 1, payRows.length, PAYMENT_COLS.length)
+      .setValues(payRows);
+  }
+
+  return { invNumber: inv.invNumber, academicYear: ay, action: existingRow > 0 ? 'updated' : 'created' };
 }
 
-function findReceiptRow(sheet, receiptId, receiptNumber) {
+function deleteInvoice(invNumber, ay) {
+  if (!invNumber) throw new Error('Invoice number is required');
+  ay = sanitizeAY(ay);
+  var invSheet = getOrCreateInvoiceSheet(ay);
+  var paySheet = getOrCreatePaymentSheet(ay);
+  var row = findInvoiceRow(invSheet, invNumber);
+  if (row > 0) invSheet.deleteRow(row);
+  removePaymentsForInvoice(paySheet, invNumber);
+  return { invNumber: invNumber, deleted: row > 0 };
+}
+
+function findInvoiceRow(sheet, invNumber) {
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) return 0;
-  var headers = data[0];
-  var idCol = headers.indexOf('receiptId');
-  var numberCol = headers.indexOf('receiptNumber');
+  var col = data[0].indexOf('invNumber');
+  if (col < 0) return 0;
   for (var i = 1; i < data.length; i++) {
-    if (receiptId && String(data[i][idCol]) === String(receiptId)) return i + 1;
-    if (!receiptId && receiptNumber && String(data[i][numberCol]) === String(receiptNumber)) return i + 1;
+    if (String(data[i][col]) === String(invNumber)) return i + 1;
   }
   return 0;
 }
 
-function getNextReceiptNumber() {
-  var sheet = getOrCreateReceiptSheet();
-  var year = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy');
-  var prefix = 'TG/' + year + '/';
+function removePaymentsForInvoice(sheet, invNumber) {
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+  var col = data[0].indexOf('invNumber');
+  if (col < 0) return;
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][col]) === String(invNumber)) sheet.deleteRow(i + 1);
+  }
+}
+
+function getNextInvoiceNumber(ay) {
+  ay = sanitizeAY(ay);
+  var sheet = getOrCreateInvoiceSheet(ay);
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) {
-    return prefix + '0001';
+    var year = new Date().getFullYear();
+    return { nextInvoiceNumber: 'EK/TGN/' + year + '/0001' };
   }
-  var headers = data[0];
-  var numCol = headers.indexOf('receiptNumber');
-  var maxSeq = 0;
+  var invCol = data[0].indexOf('invNumber');
+  var customCol = data[0].indexOf('customInvNo');
+  var maxNum = 0;
   for (var i = 1; i < data.length; i++) {
-    var value = String(data[i][numCol] || '');
-    var match = value.match(/^TG\/\d{4}\/(\d+)$/);
-    if (match) {
-      maxSeq = Math.max(maxSeq, Number(match[1]));
-    }
+    var isCustom = data[i][customCol] === true || data[i][customCol] === 'TRUE';
+    if (isCustom) continue;
+    var match = String(data[i][invCol]).match(/(\d+)$/);
+    if (match) maxNum = Math.max(maxNum, parseInt(match[1], 10));
   }
-  return prefix + String(maxSeq + 1).padStart(4, '0');
+  var year = new Date().getFullYear();
+  var nextNum = maxNum + 1;
+  var padded = ('000' + nextNum).slice(-4);
+  return { nextInvoiceNumber: 'EK/TGN/' + year + '/' + padded };
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    var yyyy = d.getFullYear();
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    var dd = ('0' + d.getDate()).slice(-2);
+    return yyyy + '-' + mm + '-' + dd;
+  }
+  return String(d);
 }
